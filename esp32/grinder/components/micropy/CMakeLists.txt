@@ -1,126 +1,220 @@
-# ------------------------------------------------------------
-# register component
-# ------------------------------------------------------------
-cmake_minimum_required(VERSION 3.16)
+# Set location of base MicroPython directory.
+if(NOT MICROPY_DIR)
+    get_filename_component(MICROPY_DIR ${PROJECT_DIR}/components/micropy ABSOLUTE)
+endif()
+set(BOARD "GENERIC")
+set(PORT_DIR ${MICROPY_DIR}/ports/esp32)
+set(MICROPY_OOFATFS_DIR ${MICROPY_DIR}/lib/oofatfs)
+# Include core source components.
+include(${MICROPY_DIR}/py/py.cmake)
 
-set(micropy_path ${CMAKE_CURRENT_SOURCE_DIR})
-set(board "GENERIC")
-set(micropython_board_build_dir ${micropy_path}/ports/esp32/build-${board})
+if(NOT CMAKE_BUILD_EARLY_EXPANSION)
+	set(MICROPY_PY_BTREE ON)
 
+	include(${MICROPY_DIR}/py/usermod.cmake)
+	include(${MICROPY_DIR}/extmod/extmod.cmake)
+endif()
+
+set(MICROPY_QSTRDEFS_PORT
+    ${PORT_DIR}/qstrdefsport.h
+)
+
+set(MICROPY_SOURCE_SHARED
+    ${MICROPY_DIR}/shared/readline/readline.c
+    ${MICROPY_DIR}/shared/netutils/netutils.c
+    ${MICROPY_DIR}/shared/timeutils/timeutils.c
+    ${MICROPY_DIR}/shared/runtime/interrupt_char.c
+    ${MICROPY_DIR}/shared/runtime/stdout_helpers.c
+    ${MICROPY_DIR}/shared/runtime/sys_stdio_mphal.c
+    ${MICROPY_DIR}/shared/runtime/pyexec.c
+)
+
+set(MICROPY_SOURCE_LIB
+    ${MICROPY_DIR}/lib/littlefs/lfs1.c
+    ${MICROPY_DIR}/lib/littlefs/lfs1_util.c
+    ${MICROPY_DIR}/lib/littlefs/lfs2.c
+    ${MICROPY_DIR}/lib/littlefs/lfs2_util.c
+    ${MICROPY_DIR}/lib/mbedtls_errors/mp_mbedtls_errors.c
+    ${MICROPY_DIR}/lib/oofatfs/ff.c
+    ${MICROPY_DIR}/lib/oofatfs/ffunicode.c
+)
+if(IDF_TARGET STREQUAL "esp32c3")
+    list(APPEND MICROPY_SOURCE_LIB ${MICROPY_DIR}/shared/runtime/gchelper_generic.c)
+endif()
+
+set(MICROPY_SOURCE_PORT
+    #${PORT_DIR}/main.c
+    #${PORT_DIR}/uart.c
+    #${PORT_DIR}/usb.c
+    #${PORT_DIR}/usb_serial_jtag.c
+    ${PORT_DIR}/gccollect.c
+    ${PORT_DIR}/mphalport.c
+    #${PORT_DIR}/fatfs_port.c
+    ${PORT_DIR}/help.c
+    ${PORT_DIR}/modutime.c
+    #${PORT_DIR}/machine_bitstream.c
+    #${PORT_DIR}/machine_timer.c
+    #${PORT_DIR}/machine_pin.c
+    #${PORT_DIR}/machine_touchpad.c
+    #${PORT_DIR}/machine_adc.c
+    #${PORT_DIR}/machine_adcblock.c
+    #${PORT_DIR}/machine_dac.c
+    #${PORT_DIR}/machine_i2c.c
+    #${PORT_DIR}/machine_i2s.c
+    #${PORT_DIR}/machine_uart.c
+    #${PORT_DIR}/modmachine.c
+    #${PORT_DIR}/modnetwork.c
+    #${PORT_DIR}/network_lan.c
+    #${PORT_DIR}/network_ppp.c
+    #${PORT_DIR}/network_wlan.c
+    #${PORT_DIR}/mpnimbleport.c
+    #${PORT_DIR}/modsocket.c
+    #${PORT_DIR}/modesp.c
+    #${PORT_DIR}/esp32_nvs.c
+    #${PORT_DIR}/esp32_partition.c
+    #${PORT_DIR}/esp32_rmt.c
+    #${PORT_DIR}/esp32_ulp.c
+    #${PORT_DIR}/modesp32.c
+    #${PORT_DIR}/machine_hw_spi.c
+    #${PORT_DIR}/machine_wdt.c
+    ${PORT_DIR}/mpthreadport.c
+    #${PORT_DIR}/machine_rtc.c
+    #${PORT_DIR}/machine_sdcard.c
+)
+
+set(MICROPY_SOURCE_QSTR
+    ${MICROPY_SOURCE_PY}
+    ${MICROPY_SOURCE_EXTMOD}
+    ${MICROPY_SOURCE_USERMOD}
+    ${MICROPY_SOURCE_SHARED}
+    ${MICROPY_SOURCE_LIB}
+    ${MICROPY_SOURCE_PORT}
+    ${MICROPY_SOURCE_BOARD}
+)
+
+set(IDF_COMPONENTS
+    app_update
+    bootloader_support
+    bt
+    driver
+    esp_adc_cal
+    esp_common
+    esp_eth
+    esp_event
+    esp_ringbuf
+    esp_rom
+    esp_wifi
+    freertos
+    heap
+    log
+    lwip
+    mbedtls
+    mdns
+    newlib
+    nvs_flash
+    sdmmc
+    soc
+    spi_flash
+    tcpip_adapter
+    ulp
+    vfs
+    xtensa
+)
+
+if(IDF_VERSION_MINOR GREATER_EQUAL 1 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
+    list(APPEND IDF_COMPONENTS esp_netif)
+endif()
+
+if(IDF_VERSION_MINOR GREATER_EQUAL 2 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
+    list(APPEND IDF_COMPONENTS esp_system)
+    list(APPEND IDF_COMPONENTS esp_timer)
+endif()
+
+if(IDF_VERSION_MINOR GREATER_EQUAL 3 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
+    list(APPEND IDF_COMPONENTS esp_hw_support)
+    list(APPEND IDF_COMPONENTS esp_pm)
+    list(APPEND IDF_COMPONENTS hal)
+endif()
+
+if(IDF_TARGET STREQUAL "esp32")
+    list(APPEND IDF_COMPONENTS esp32)
+elseif(IDF_TARGET STREQUAL "esp32c3")
+    list(APPEND IDF_COMPONENTS esp32c3)
+    list(APPEND IDF_COMPONENTS riscv)
+elseif(IDF_TARGET STREQUAL "esp32s2")
+    list(APPEND IDF_COMPONENTS esp32s2)
+    list(APPEND IDF_COMPONENTS tinyusb)
+elseif(IDF_TARGET STREQUAL "esp32s3")
+    list(APPEND IDF_COMPONENTS esp32s3)
+    list(APPEND IDF_COMPONENTS tinyusb)
+endif()
+
+# Register the main IDF component.
 idf_component_register(
-                SRCS 
-                  "${micropy_path}/py/argcheck.c"
-                  "${micropy_path}/py/asmbase.c"
-                  "${micropy_path}/py/bc.c"
-                  "${micropy_path}/py/binary.c"
-                  "${micropy_path}/py/builtinevex.c"
-                  "${micropy_path}/py/builtinhelp.c"
-                  "${micropy_path}/py/builtinimport.c"
-                  "${micropy_path}/py/compile.c"
-                  "${micropy_path}/py/emitbc.c"
-                  "${micropy_path}/py/emitcommon.c"
-                  "${micropy_path}/py/emitglue.c"
-                  "${micropy_path}/py/formatfloat.c"
-                  "${micropy_path}/py/frozenmod.c"
-                  "${micropy_path}/py/gc.c"
-                  "${micropy_path}/py/lexer.c"
-                  "${micropy_path}/py/malloc.c"
-                  "${micropy_path}/py/map.c"
-                  "${micropy_path}/py/modbuiltins.c"
-                  "${micropy_path}/py/modgc.c"
-                  "${micropy_path}/py/modmicropython.c"
-                  "${micropy_path}/py/modstruct.c"
-                  "${micropy_path}/py/modthread.c"
-                  "${micropy_path}/py/moduerrno.c"
-                  "${micropy_path}/py/mpprint.c"
-                  "${micropy_path}/py/mpstate.c"
-                  "${micropy_path}/py/mpz.c"
-                  "${micropy_path}/py/nativeglue.c"
-                  "${micropy_path}/py/nlr.c"
-                  "${micropy_path}/py/nlrsetjmp.c"
-                  "${micropy_path}/py/obj.c"
-                  "${micropy_path}/py/objarray.c"
-                  "${micropy_path}/py/objbool.c"
-                  "${micropy_path}/py/objboundmeth.c"
-                  "${micropy_path}/py/objcell.c"
-                  "${micropy_path}/py/objclosure.c"
-                  "${micropy_path}/py/objcomplex.c"
-                  "${micropy_path}/py/objdict.c"
-                  "${micropy_path}/py/objenumerate.c"
-                  "${micropy_path}/py/objexcept.c"
-                  "${micropy_path}/py/objfilter.c"
-                  "${micropy_path}/py/objfloat.c"
-                  "${micropy_path}/py/objfun.c"
-                  "${micropy_path}/py/objgenerator.c"
-                  "${micropy_path}/py/objgetitemiter.c"
-                  "${micropy_path}/py/objint.c"
-                  "${micropy_path}/py/objint_mpz.c"
-                  "${micropy_path}/py/objlist.c"
-                  "${micropy_path}/py/objmap.c"
-                  "${micropy_path}/py/objmodule.c"
-                  "${micropy_path}/py/objnone.c"
-                  "${micropy_path}/py/objobject.c"
-                  "${micropy_path}/py/objpolyiter.c"
-                  "${micropy_path}/py/objproperty.c"
-                  "${micropy_path}/py/objrange.c"
-                  "${micropy_path}/py/objreversed.c"
-                  "${micropy_path}/py/objset.c"
-                  "${micropy_path}/py/objsingleton.c"
-                  "${micropy_path}/py/objslice.c"
-                  "${micropy_path}/py/objstr.c"
-                  "${micropy_path}/py/objstrunicode.c"
-                  "${micropy_path}/py/objtuple.c"
-                  "${micropy_path}/py/objtype.c"
-                  "${micropy_path}/py/objzip.c"
-                  "${micropy_path}/py/opmethods.c"
-                  "${micropy_path}/py/parse.c"
-                  "${micropy_path}/py/parsenum.c"
-                  "${micropy_path}/py/parsenumbase.c"
-                  "${micropy_path}/py/persistentcode.c"
-                  "${micropy_path}/py/profile.c"
-                  "${micropy_path}/py/qstr.c"
-                  "${micropy_path}/py/reader.c"
-                  "${micropy_path}/py/repl.c"
-                  "${micropy_path}/py/runtime.c"
-                  "${micropy_path}/py/runtime_utils.c"
-                  "${micropy_path}/py/scope.c"
-                  "${micropy_path}/py/scheduler.c"
-                  "${micropy_path}/py/sequence.c"
-                  "${micropy_path}/py/smallint.c"
-                  "${micropy_path}/py/stream.c"
-                  "${micropy_path}/py/stackctrl.c"
-                  "${micropy_path}/py/unicode.c"
-                  "${micropy_path}/py/vm.c"
-                  "${micropy_path}/py/vstr.c"
-                  "${micropy_path}/py/warning.c"
-                  "${micropy_path}/shared/readline/readline.c"
-                  "${micropy_path}/shared/timeutils/timeutils.c"
-                  "${micropy_path}/shared/runtime/interrupt_char.c"
-                  "${micropy_path}/extmod/utime_mphal.c"
-                  "${micropy_path}/shared/runtime/pyexec.c"
-                  "${micropy_path}/ports/esp32/gccollect.c"
-                  "${micropy_path}/ports/esp32/help.c"
-                  "${micropy_path}/ports/esp32/mphalport.c"
-                  "${micropy_path}/ports/esp32/mpthreadport.c"
-                  "${micropy_path}/ports/esp32/modutime.c"
-                  "${micropython_board_build_dir}/frozen_content.c"
-                INCLUDE_DIRS
-                  ${micropy_path}
-				  ${micropy_path}/ports/esp32
-				  ${micropy_path}/ports/esp32/boards/${board}
-                REQUIRES 
+    SRCS
+        ${MICROPY_SOURCE_PY}
+        ${MICROPY_SOURCE_EXTMOD}
+        ${MICROPY_SOURCE_SHARED}
+        ${MICROPY_SOURCE_LIB}
+        ${MICROPY_SOURCE_DRIVERS}
+        ${MICROPY_SOURCE_PORT}
+        ${MICROPY_SOURCE_BOARD}
+    INCLUDE_DIRS
+        ${MICROPY_INC_CORE}
+        ${MICROPY_INC_USERMOD}
+        ${MICROPY_PORT_DIR}
+        ${MICROPY_BOARD_DIR}
+        ${CMAKE_BINARY_DIR}
+		${PORT_DIR}/boards/${BOARD}
+		${PORT_DIR}
+    REQUIRES
+        ${IDF_COMPONENTS}
 )
 
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMICROPY_ESP_IDF_4 -Wno-override-init -Wno-implicit-fallthrough -I${micropython_board_build_dir}" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMICROPY_ESP_IDF_4 -I${micropython_board_build_dir}" )
+# Set the MicroPython target as the current (main) IDF component target.
+set(MICROPY_TARGET ${COMPONENT_TARGET})
 
-add_custom_command(OUTPUT "${micropython_board_build_dir}/frozen_content.c"
-    COMMAND echo "------------- Building Micropython externally ---------------"
-    COMMAND cd ${micropy_path}/ports/esp32
-    COMMAND make BOARD=${board}
-    DEPENDS 
-		${micropy_path}/ports/esp32/mpconfigport.h
+# Define mpy-cross flags, for use with frozen code.
+set(MICROPY_CROSS_FLAGS -march=xtensawin)
+
+# Set compile options for this port.
+target_compile_definitions(${MICROPY_TARGET} PUBLIC
+    ${MICROPY_DEF_CORE}
+    MICROPY_ESP_IDF_4=1
+    MICROPY_VFS_FAT=1
+    MICROPY_VFS_LFS2=1
+    FFCONF_H=\"${MICROPY_OOFATFS_DIR}/ffconf.h\"
+    LFS1_NO_MALLOC LFS1_NO_DEBUG LFS1_NO_WARN LFS1_NO_ERROR LFS1_NO_ASSERT
+    LFS2_NO_MALLOC LFS2_NO_DEBUG LFS2_NO_WARN LFS2_NO_ERROR LFS2_NO_ASSERT
 )
 
-add_custom_target(generate_frozen ALL
-    DEPENDS "${micropython_board_build_dir}/frozen_content.c")
+# Disable some warnings to keep the build output clean.
+target_compile_options(${MICROPY_TARGET} PUBLIC
+    -Wno-clobbered
+    -Wno-deprecated-declarations
+    -Wno-missing-field-initializers
+)
+
+# Add additional extmod and usermod components.
+target_link_libraries(${MICROPY_TARGET} micropy_extmod_btree)
+target_link_libraries(${MICROPY_TARGET} usermod)
+
+
+# Collect all of the include directories and compile definitions for the IDF components.
+foreach(comp ${IDF_COMPONENTS})
+    micropy_gather_target_properties(__idf_${comp})
+endforeach()
+
+if(IDF_VERSION_MINOR GREATER_EQUAL 2 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
+    # These paths cannot currently be found by the IDF_COMPONENTS search loop above,
+    # so add them explicitly.
+    list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/soc/soc/${IDF_TARGET}/include)
+    list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/soc/soc/include)
+    if(IDF_VERSION_MINOR GREATER_EQUAL 3)
+        list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/tinyusb/additions/include)
+        list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/tinyusb/tinyusb/src)
+    endif()
+endif()
+
+# Include the main MicroPython cmake rules.
+include(${MICROPY_DIR}/py/mkrules.cmake)

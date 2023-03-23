@@ -5776,7 +5776,7 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/crtn.o
                 0x0000000000046000                . = ALIGN (CONSTANT (MAXPAGESIZE))
                 0x0000000000046000                . = SEGMENT_START ("rodata-segment", (ALIGN (CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 0x1))))
 
-.rodata         0x0000000000046000     0x79e5
+.rodata         0x0000000000046000     0x79dd
  *(.rodata .rodata.* .gnu.linkonce.r.*)
  .rodata.gc_free.part.0.str1.1
                 0x0000000000046000       0x1b build/py/gc.o
@@ -7642,32 +7642,32 @@ LOAD /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/crtn.o
  .rodata.usage.isra.0.str1.1
                 0x000000000004d5c9      0x2f4 build/main.o
  .rodata.main_.str1.1
-                0x000000000004d8bd      0x110 build/main.o
-                                        0x117 (size before relaxing)
+                0x000000000004d8bd      0x108 build/main.o
+                                        0x10f (size before relaxing)
  .rodata.nlr_jump_fail.str1.1
-                0x000000000004d9cd       0x18 build/main.o
+                0x000000000004d9c5       0x18 build/main.o
 
 .rodata1
  *(.rodata1)
 
-.eh_frame_hdr   0x000000000004d9e8       0x2c
+.eh_frame_hdr   0x000000000004d9e0       0x2c
  *(.eh_frame_hdr)
- .eh_frame_hdr  0x000000000004d9e8       0x2c /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
-                0x000000000004d9e8                __GNU_EH_FRAME_HDR
+ .eh_frame_hdr  0x000000000004d9e0       0x2c /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000004d9e0                __GNU_EH_FRAME_HDR
  *(.eh_frame_entry .eh_frame_entry.*)
 
-.eh_frame       0x000000000004da18       0x88
+.eh_frame       0x000000000004da10       0x88
  *(.eh_frame)
- .eh_frame      0x000000000004da18       0x30 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
+ .eh_frame      0x000000000004da10       0x30 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
                                          0x2c (size before relaxing)
- *fill*         0x000000000004da48        0x0 
- .eh_frame      0x000000000004da48       0x28 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
+ *fill*         0x000000000004da40        0x0 
+ .eh_frame      0x000000000004da40       0x28 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
                                          0x40 (size before relaxing)
- .eh_frame      0x000000000004da70       0x18 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
+ .eh_frame      0x000000000004da68       0x18 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
                                          0x30 (size before relaxing)
- .eh_frame      0x000000000004da88       0x14 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
+ .eh_frame      0x000000000004da80       0x14 /usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu/Scrt1.o
                                          0x30 (size before relaxing)
- .eh_frame      0x000000000004da9c        0x4 /usr/lib/gcc/x86_64-linux-gnu/11/crtendS.o
+ .eh_frame      0x000000000004da94        0x4 /usr/lib/gcc/x86_64-linux-gnu/11/crtendS.o
  *(.eh_frame.*)
 
 .gcc_except_table

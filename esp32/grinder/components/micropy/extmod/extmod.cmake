@@ -7,17 +7,17 @@ set(MICROPY_SOURCE_EXTMOD
     ${MICROPY_DIR}/shared/libc/abort_.c
     ${MICROPY_DIR}/shared/libc/printf.c
     ${MICROPY_EXTMOD_DIR}/machine_bitstream.c
-    ${MICROPY_EXTMOD_DIR}/machine_i2c.c
+    #${MICROPY_EXTMOD_DIR}/machine_i2c.c
     ${MICROPY_EXTMOD_DIR}/machine_mem.c
-    ${MICROPY_EXTMOD_DIR}/machine_pulse.c
-    ${MICROPY_EXTMOD_DIR}/machine_pwm.c
-    ${MICROPY_EXTMOD_DIR}/machine_signal.c
-    ${MICROPY_EXTMOD_DIR}/machine_spi.c
-    ${MICROPY_EXTMOD_DIR}/modbluetooth.c
-    ${MICROPY_EXTMOD_DIR}/modbtree.c
-    ${MICROPY_EXTMOD_DIR}/modframebuf.c
-    ${MICROPY_EXTMOD_DIR}/modnetwork.c
-    ${MICROPY_EXTMOD_DIR}/modonewire.c
+    #${MICROPY_EXTMOD_DIR}/machine_pulse.c
+    #${MICROPY_EXTMOD_DIR}/machine_pwm.c
+    #${MICROPY_EXTMOD_DIR}/machine_signal.c
+    #${MICROPY_EXTMOD_DIR}/machine_spi.c
+    #${MICROPY_EXTMOD_DIR}/modbluetooth.c
+    #${MICROPY_EXTMOD_DIR}/modbtree.c
+    #${MICROPY_EXTMOD_DIR}/modframebuf.c
+    #${MICROPY_EXTMOD_DIR}/modnetwork.c
+    #${MICROPY_EXTMOD_DIR}/modonewire.c
     ${MICROPY_EXTMOD_DIR}/moduasyncio.c
     ${MICROPY_EXTMOD_DIR}/modubinascii.c
     ${MICROPY_EXTMOD_DIR}/moducryptolib.c
@@ -49,7 +49,7 @@ set(MICROPY_SOURCE_EXTMOD
     ${MICROPY_EXTMOD_DIR}/vfs_posix_file.c
     ${MICROPY_EXTMOD_DIR}/vfs_reader.c
     ${MICROPY_EXTMOD_DIR}/virtpin.c
-    ${MICROPY_EXTMOD_DIR}/nimble/modbluetooth_nimble.c
+    #${MICROPY_EXTMOD_DIR}/nimble/modbluetooth_nimble.c
 )
 
 # Library for btree module and associated code
