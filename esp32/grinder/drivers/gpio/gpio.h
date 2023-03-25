@@ -1,21 +1,33 @@
-#ifndef __GPIO_H__
-#define __GPIO_H__
+#ifndef __ADC_H__
+#define __ADC_H__
 
-#include <stdinit.h>
-
-typedef enum {
-
-} gpio_isr_detect_t;
+#include <stdint.h>
+#include "driver/gpio.h"
 
 typedef enum {
-    GPIO_IN;
-    GPIO_OUT;
-} gpio_mode_t;
+    INPUT,
+    OUTPUT,
+    INPUT_PULLUP,
+    INPUT_PULLDOWN
+} pin_mode_t;
 
-typedef void (*gpio_interrupt_handler)(void);
-void gpio_set_mode(gpio_mode_t mode);
-void gpio_read_pin(uint8_t pin);
-void gpio_write_pin(uint8_t pin);
-void gpio_attach_interrupt(uint8_t pin, gpio_interrupt_handler func, gpio_isr_detect_t detect_type);
+typedef enum {
+    LOW,
+    HIGH
+} output_level_t;
+
+typedef enum {
+    ISR_LOW = GPIO_INTR_LOW_LEVEL,
+    ISR_HIGH = GPIO_INTR_HIGH_LEVEL,
+    ISR_CHANGE = GPIO_INTR_ANYEDGE,
+    ISR_RISING = GPIO_INTR_POSEDGE,
+    ISR_FALLING = GPIO_INTR_NEGEDGE
+} isr_mode_t;
+
+typedef void (*isr_handler) (void);
+void pin_mode(uint32_t pin, pin_mode_t mode);
+void attachInterrupt(uint32_t pin, isr_handler handler, isr_mode_t mode);
+int pin_read(uint32_t pin);
+void pin_write(uint32_t pin, output_level_t level);
 
 #endif
