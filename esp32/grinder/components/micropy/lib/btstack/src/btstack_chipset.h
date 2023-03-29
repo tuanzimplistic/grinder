@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,11 +35,12 @@
  *
  */
 
-/*
- *  btstack_chipset.h
+/**
+ * @title Chipset Driver 
+ * 
+ * The API implements custom chipset initialization and support of proprietary extensions
+ * to set UART baud rate, Bluetooth Address, and similar.
  *
- *  Chipset Driver - implements custom chipset initializtion and support proprietary extensions
- *  to set UART baud rate, Bluetooth Address, and similar.
  */
 
 #ifndef BTSTACK_CHIPSET_H
@@ -59,6 +60,7 @@ typedef enum {
   BTSTACK_CHIPSET_NO_INIT_SCRIPT,
 } btstack_chipset_result_t;
 
+/* API_START */
 
 typedef struct {
     /**
@@ -94,6 +96,8 @@ typedef struct {
     void (*set_bd_addr_command)(bd_addr_t addr, uint8_t *hci_cmd_buffer); 
 
 } btstack_chipset_t;
+
+/* API_END */
 
 #if defined __cplusplus
 }

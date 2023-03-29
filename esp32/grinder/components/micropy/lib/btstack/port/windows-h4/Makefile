@@ -1,15 +1,15 @@
 # Makefile for windows-h4 examples
 BTSTACK_ROOT ?= ../..
 
-CORE += main.c btstack_stdin_windows.c
+CORE += main.c btstack_stdin_windows.c btstack_tlv_windows.c hci_dump_windows_fs.c
 
 COMMON  += \
 			btstack_run_loop_windows.c   \
 			hci_transport_h4.c           \
 			btstack_uart_block_windows.c \
-			le_device_db_fs.c            \
-			btstack_link_key_db_fs.c     \
-			bluetooth_init_cc2564B_1.6_BT_Spec_4.1.c \
+			le_device_db_tlv.c           \
+			btstack_link_key_db_tlv.c    \
+			bluetooth_init_cc2564C_1.5.c \
 			btstack_chipset_cc256x.c \
 			btstack_chipset_csr.c \
 			btstack_chipset_em9301.c \
@@ -30,7 +30,6 @@ include ${BTSTACK_ROOT}/chipset/cc256x/Makefile.inc
 
 # CC = gcc-fsf-4.9
 CFLAGS  += -g -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Werror
-# CFLAGS += -Werror
 
 CFLAGS += -I${BTSTACK_ROOT}/platform/posix \
 		  -I${BTSTACK_ROOT}/platform/windows \

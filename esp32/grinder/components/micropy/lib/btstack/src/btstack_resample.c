@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -57,12 +57,12 @@ uint16_t btstack_resample_block(btstack_resample_t * context, const int16_t * in
     uint16_t dest_samples = 0;
     // samples between last sample of previous block and first sample in current block 
     while (context->src_pos >= 0xffff0000){
-        const uint16_t t = context->src_pos & 0xffff;
+        const uint16_t t = context->src_pos & 0xffffu;
         int i;
         for (i=0;i<context->num_channels;i++){
             int s1 = context->last_sample[i];
             int s2 = input_buffer[i];
-            int os = ((s1*(0x10000 - t)) + (s2*t)) >> 16;
+            int os = ((s1*(0x10000u - t)) + (s2*t)) >> 16u;
             output_buffer[dest_samples++] = os;
         }
         dest_frames++;
@@ -71,10 +71,10 @@ uint16_t btstack_resample_block(btstack_resample_t * context, const int16_t * in
     // process current block
     while (true){
         const uint16_t src_pos = context->src_pos >> 16;
-        const uint16_t t       = context->src_pos & 0xffff;
+        const uint16_t t       = context->src_pos & 0xffffu;
         int index = src_pos * context->num_channels;
         int i;
-        if (src_pos >= (num_frames - 1)){
+        if (src_pos >= (num_frames - 1u)){
             // store last sample
             for (i=0;i<context->num_channels;i++){
                 context->last_sample[i] = input_buffer[index++];
@@ -86,7 +86,7 @@ uint16_t btstack_resample_block(btstack_resample_t * context, const int16_t * in
         for (i=0;i<context->num_channels;i++){
             int s1 = input_buffer[index];
             int s2 = input_buffer[index+context->num_channels];
-            int os = ((s1*(0x10000 - t)) + (s2*t)) >> 16;
+            int os = ((s1*(0x10000u - t)) + (s2*t)) >> 16u;
             output_buffer[dest_samples++] = os;
             index++;
         }

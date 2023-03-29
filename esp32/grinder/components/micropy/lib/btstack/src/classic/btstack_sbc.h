@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,8 +35,8 @@
  *
  */
 
-/*
- * btstack_sbc.h
+/**
+ * SBC
  *
  */
 
@@ -50,10 +50,22 @@
 extern "C" {
 #endif
 
-typedef enum{
-    SBC_MODE_STANDARD,
+typedef enum {
+    SBC_MODE_STANDARD = 0,
     SBC_MODE_mSBC
 } btstack_sbc_mode_t;
+
+typedef enum {
+    SBC_CHANNEL_MODE_MONO = 0,
+    SBC_CHANNEL_MODE_DUAL_CHANNEL,
+    SBC_CHANNEL_MODE_STEREO,
+    SBC_CHANNEL_MODE_JOINT_STEREO
+} btstack_sbc_channel_mode_t;
+
+typedef enum {
+    SBC_ALLOCATION_METHOD_LOUDNESS = 0,
+    SBC_ALLOCATION_METHOD_SNR
+} btstack_sbc_allocation_method_t;
 
 typedef struct {
     void * context;
@@ -126,7 +138,8 @@ int btstack_sbc_decoder_sample_rate(btstack_sbc_decoder_state_t * state);
  * @param channel_mode
  */
 void btstack_sbc_encoder_init(btstack_sbc_encoder_state_t * state, btstack_sbc_mode_t mode, 
-                        int blocks, int subbands, int allocation_method, int sample_rate, int bitpool, int channel_mode);
+                        int blocks, int subbands, btstack_sbc_allocation_method_t allocation_method, 
+                        int sample_rate, int bitpool, btstack_sbc_channel_mode_t channel_mode);
 
 /**
  * @brief Encode PCM data

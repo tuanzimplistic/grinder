@@ -35,8 +35,10 @@
  *
  */
 
+#define BTSTACK_FILE__ "bnep_test.c"
+
 /*
- * bnep_test.c
+ * bnep_test.c : Tool for testig BNEP with PTS
  * based on panu_demo implemented by Ole Reinhardt <ole.reinhardt@kernelconcepts.de>
  */
 
@@ -58,14 +60,14 @@
 #include "btstack_event.h"
 #include "btstack_memory.h"
 #include "btstack_run_loop.h"
-#include "classic/sdp_server.h"
-#include "classic/sdp_util.h"
 #include "hci.h"
 #include "hci_cmd.h"
 #include "hci_dump.h"
 #include "l2cap.h"
-#include "pan.h"
 #include "btstack_stdin.h"
+#include "classic/pan.h"
+#include "classic/sdp_server.h"
+#include "classic/sdp_util.h"
 
 #define HARDWARE_TYPE_ETHERNET 0x0001
 
@@ -687,7 +689,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     break;
 
                 case HCI_EVENT_COMMAND_COMPLETE:
-					if (HCI_EVENT_IS_COMMAND_COMPLETE(packet, hci_read_bd_addr)){
+					if (hci_event_command_complete_get_command_opcode(packet) == HCI_OPCODE_HCI_READ_BD_ADDR){
                         reverse_bd_addr(&packet[6], local_addr);
                         printf("BD-ADDR: %s\n", bd_addr_to_str(local_addr));
                         break;

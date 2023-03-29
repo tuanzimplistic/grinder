@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -44,9 +44,10 @@
 #define BTSTACK_FILE__ "btstack_uart_block_wiced.c"
 
 #include "btstack_config.h"
-#include "btstack_run_loop_wiced.h"
-
 #include "btstack_debug.h"
+#include "btstack_run_loop_wiced.h"
+#include "btstack_uart_block.h"
+
 #include "hci.h"
 #include "hci_transport.h"
 #include "platform_bluetooth.h"
@@ -116,6 +117,7 @@ static wiced_result_t btstack_uart_block_wiced_main_notify_block_read(void *arg)
 }
 
 // executed on tx worker thread
+static btstack_context_callback_registration_t block_send_callback_registration;
 static wiced_result_t btstack_uart_block_wiced_tx_worker_send_block(void * arg){
     // wait for CTS to become low in manual flow control mode
     if (btstack_flow_control_mode == BTSTACK_FLOW_CONTROL_MANUAL && wiced_bt_uart_pins[WICED_BT_PIN_UART_CTS]){
@@ -128,11 +130,13 @@ static wiced_result_t btstack_uart_block_wiced_tx_worker_send_block(void * arg){
     platform_uart_transmit_bytes(wiced_bt_uart_driver, tx_worker_data_buffer, tx_worker_data_size);
 
     // let transport know
-    btstack_run_loop_wiced_execute_code_on_main_thread(&btstack_uart_block_wiced_main_notify_block_send, NULL);
+    block_send_callback_registration.callback = &btstack_uart_block_wiced_main_notify_block_send;
+    btstack_run_loop_execute_on_main_thread(&block_send_callback_registration);
     return WICED_SUCCESS;
 }
 
 // executed on rx worker thread
+static btstack_context_callback_registration_t block_received_callback_registration;
 static wiced_result_t btstack_uart_block_wiced_rx_worker_receive_block(void * arg){
 
     if (btstack_flow_control_mode == BTSTACK_FLOW_CONTROL_MANUAL && wiced_bt_uart_pins[WICED_BT_PIN_UART_CTS]){
@@ -154,7 +158,8 @@ static wiced_result_t btstack_uart_block_wiced_rx_worker_receive_block(void * ar
     }
 
     // let transport know
-    btstack_run_loop_wiced_execute_code_on_main_thread(&btstack_uart_block_wiced_main_notify_block_read, NULL);
+    block_received_callback_registration.callback = &btstack_uart_block_wiced_main_notify_block_read;
+    btstack_run_loop_execute_on_main_thread(&block_received_callback_registration);
     return WICED_SUCCESS;
 }
 
@@ -378,6 +383,7 @@ static const btstack_uart_block_t btstack_uart_block_wiced = {
     /* int (*get_supported_sleep_modes); */                           NULL,
     /* void (*set_sleep)(btstack_uart_sleep_mode_t sleep_mode); */    NULL,
     /* void (*set_wakeup_handler)(void (*handler)(void)); */          NULL,
+    NULL, NULL, NULL, NULL,
 };
 
 const btstack_uart_block_t * btstack_uart_block_wiced_instance(void){

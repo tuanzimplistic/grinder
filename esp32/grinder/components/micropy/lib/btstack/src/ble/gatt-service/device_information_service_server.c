@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -53,6 +53,7 @@
 #include "ble/att_server.h"
 #include "btstack_util.h"
 #include "bluetooth_gatt.h"
+#include "btstack_debug.h"
 
 #include "ble/gatt-service/device_information_service_server.h"
 
@@ -84,14 +85,14 @@ static uint8_t device_information_pnp_id[7];
 static att_service_handler_t       device_information_service;
 static void set_string(device_information_field_id_t field_id, const char * text){
 	device_information_fields[field_id].data = (uint8_t*) text;
-	device_information_fields[field_id].len  = strlen(text);
+	device_information_fields[field_id].len  = (uint8_t) strlen(text);
 }
 
 static uint16_t device_information_service_read_callback(hci_con_handle_t con_handle, uint16_t attribute_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size){
 	UNUSED(con_handle);	// ok: info same for all devices
 	unsigned int i;
 	for (i=0;i<NUM_INFORMATION_FIELDS;i++){
-		if (device_information_fields[i].value_handle == attribute_handle) {
+		if ((device_information_fields[i].value_handle == attribute_handle) && (device_information_fields[i].data != NULL)){
 			return att_read_callback_handle_blob(device_information_fields[i].data, device_information_fields[i].len, offset, buffer, buffer_size);
 		};
 	}
@@ -116,8 +117,9 @@ void device_information_service_server_init(void){
     // get service handle range
 	uint16_t start_handle;
 	uint16_t end_handle;
-	int service_found = gatt_server_get_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_DEVICE_INFORMATION, &start_handle, &end_handle);
-	if (!service_found) return;
+	int service_found = gatt_server_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_DEVICE_INFORMATION, &start_handle, &end_handle);
+	btstack_assert(service_found != 0);
+	UNUSED(service_found);
 
 	// set length for fixed size characateristics
 	device_information_fields[SYSTEM_ID].data = device_information_system_id;
@@ -195,8 +197,8 @@ void device_information_service_server_set_software_revision(const char * softwa
  * @param organizationally_unique_identifier uint24
  */
 void device_information_service_server_set_system_id(uint64_t manufacturer_identifier, uint32_t organizationally_unique_identifier){
-	little_endian_store_32(device_information_system_id, 0, manufacturer_identifier);
-	device_information_system_id[4] = manufacturer_identifier >> 32;
+	little_endian_store_32(device_information_system_id, 0, (uint32_t)(manufacturer_identifier & 0xffffffff));
+	device_information_system_id[4] = (uint8_t) (manufacturer_identifier >> 32);
 	little_endian_store_16(device_information_system_id, 5, organizationally_unique_identifier);
 	device_information_system_id[7] = organizationally_unique_identifier >> 16;
 }

@@ -14,11 +14,11 @@
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY MATTHIAS RINGWALD AND CONTRIBUTORS
+ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -29,11 +29,11 @@
  *
  */
 
-/*
- *  btstack_tlv_none.h
+/**
+ * @title Empty TLV Instance
  *
- *  Empty implementation for BTstack's Tag Value Length Persistent Storage implementations
- *  No keys are stored. Can be used as placeholder during porting to new platform. 
+ * Empty implementation for BTstack's Tag Value Length Persistent Storage implementations
+ * No keys are stored. Can be used as placeholder during porting to new platform. 
  */
 
 #ifndef BTSTACK_TLV_NONE_H
@@ -46,6 +46,8 @@
 extern "C" {
 #endif
 
+/* API_START */
+
 /**
  * Init Tag Length Value Store
  * @param context btstack_tlv_none_t 
@@ -53,6 +55,8 @@ extern "C" {
  * @Param hal_flash_bank_context of hal_flash_bank_interface
  */
 const btstack_tlv_t * btstack_tlv_none_init_instance(void);
+
+/* API_END */
 
 #if defined __cplusplus
 }

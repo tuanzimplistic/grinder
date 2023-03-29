@@ -34,12 +34,13 @@
  * contact@bluekitchen-gmbh.com
  *
  */
- 
-// *****************************************************************************
-//
-// minimal setup for SDP client over USB or UART
-//
-// *****************************************************************************
+
+#define BTSTACK_FILE__ "classic_test.c"
+
+/*
+ * classic_test.c : minimal setup for SDP client over USB or UART
+ */
+
 
 #include "btstack_config.h"
 
@@ -630,7 +631,7 @@ static void stdin_process(char c){
             break;
         case 's':
             printf("L2CAP Channel Closed\n");
-            l2cap_disconnect(local_cid, 0);
+            l2cap_disconnect(local_cid);
             break;
         case 'x':
             printf("Outgoing L2CAP Channels to SDP will also require SSP\n");

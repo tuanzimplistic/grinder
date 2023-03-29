@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,38 +38,19 @@
 #define BTSTACK_FILE__ "ancs_client_demo.c"
 
 // *****************************************************************************
-//
-// ANCS Client Demo
-//
-// TODO: query full text upon notification using control point
-// TODO: present notifications in human readable form
-//
-// *****************************************************************************
-
+/* EXAMPLE_START(ancs_client_demo): LE ANCS Client - Apple Notification Service
+ *
+ */ 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
 
-#include "btstack_config.h"
+#include "btstack.h"
 
-#include "btstack_run_loop.h"
-
-#include "btstack_debug.h"
-#include "btstack_event.h"
-#include "btstack_memory.h"
-#include "gap.h"
-#include "hci.h"
-#include "hci_dump.h"
-#include "l2cap.h"
-
-#include "ble/ancs_client.h"
-#include "ble/att_db.h"
-#include "ble/att_server.h"
-#include "ble/gatt_client.h"
-#include "ble/le_device_db.h"
-#include "ble/sm.h"
+// TODO: query full text upon notification using control point
+// TODO: present notifications in human readable form
 
 // ancs_client_demo.gatt contains the declaration of the provided GATT Services + Characteristics
 // ancs_client_demo.h    contains the binary representation of ancs_client_demo.gatt
@@ -93,17 +74,17 @@ static void app_packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *
     UNUSED(channel);
     UNUSED(size);
 
-    switch (packet_type) {
-        case HCI_EVENT_PACKET:
-            switch (hci_event_packet_get_type(packet)) {
-                case SM_EVENT_JUST_WORKS_REQUEST:
-                    sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
-                    printf("Just Works Confirmed.\n");
-                    break;
-                case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-                    printf("Passkey display: %"PRIu32"\n", sm_event_passkey_display_number_get_passkey(packet));
-                    break;
-            }
+    if (packet_type != HCI_EVENT_PACKET) return;
+
+    switch (hci_event_packet_get_type(packet)) {
+        case SM_EVENT_JUST_WORKS_REQUEST:
+            sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
+            printf("Just Works Confirmed.\n");
+            break;
+        case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
+            printf("Passkey display: %"PRIu32"\n", sm_event_passkey_display_number_get_passkey(packet));
+            break;
+        default:
             break;
     }
 }
@@ -143,9 +124,6 @@ int btstack_main(int argc, const char * argv[]){
     // set up l2cap_le
     l2cap_init();
     
-    // setup le device db
-    le_device_db_init();
-
     // setup SM: Display only
     sm_init();
     sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
@@ -190,3 +168,5 @@ int btstack_main(int argc, const char * argv[]){
     
     return 0;
 }
+
+/* EXAMPLE_END */

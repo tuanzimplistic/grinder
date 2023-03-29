@@ -1,22 +1,39 @@
 # Set location of base MicroPython directory.
-if(NOT MICROPY_DIR)
-    get_filename_component(MICROPY_DIR ${PROJECT_DIR}/components/micropy ABSOLUTE)
+set(MICROPY_DIR /home/tuan/grinder/esp32/grinder/components/micropy)
+set(PROJECT_DIR /home/tuan/grinder/esp32/grinder/components/micropy/ports/esp32)
+set(MICROPY_PORT_DIR ${PROJECT_DIR})
+set(MICROPY_BOARD GENERIC)
+set(MICROPY_BOARD_DIR ${MICROPY_PORT_DIR}/boards/${MICROPY_BOARD})
+
+#######################################################################
+# Define the output sdkconfig so it goes in the build directory.
+# Save the manifest file set from the cmake command line.
+set(MICROPY_USER_FROZEN_MANIFEST ${MICROPY_FROZEN_MANIFEST})
+
+# Set the frozen manifest file. Note if MICROPY_FROZEN_MANIFEST is set from the cmake
+# command line, then it will override the default and any manifest set by the board.
+if (MICROPY_USER_FROZEN_MANIFEST)
+    set(MICROPY_FROZEN_MANIFEST ${MICROPY_USER_FROZEN_MANIFEST})
+elseif (NOT MICROPY_FROZEN_MANIFEST)
+    set(MICROPY_FROZEN_MANIFEST ${MICROPY_PORT_DIR}/boards/manifest.py)
 endif()
-set(BOARD "GENERIC")
-set(PORT_DIR ${MICROPY_DIR}/ports/esp32)
-set(MICROPY_OOFATFS_DIR ${MICROPY_DIR}/lib/oofatfs)
+
+#######################################################################
+
 # Include core source components.
 include(${MICROPY_DIR}/py/py.cmake)
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
-	set(MICROPY_PY_BTREE ON)
+    # Enable extmod components that will be configured by extmod.cmake.
+    # A board may also have enabled additional components.
+    set(MICROPY_PY_BTREE ON)
 
-	include(${MICROPY_DIR}/py/usermod.cmake)
-	include(${MICROPY_DIR}/extmod/extmod.cmake)
+    include(${MICROPY_DIR}/py/usermod.cmake)
+    include(${MICROPY_DIR}/extmod/extmod.cmake)
 endif()
 
 set(MICROPY_QSTRDEFS_PORT
-    ${PORT_DIR}/qstrdefsport.h
+    ${PROJECT_DIR}/qstrdefsport.h
 )
 
 set(MICROPY_SOURCE_SHARED
@@ -38,48 +55,50 @@ set(MICROPY_SOURCE_LIB
     ${MICROPY_DIR}/lib/oofatfs/ff.c
     ${MICROPY_DIR}/lib/oofatfs/ffunicode.c
 )
-if(IDF_TARGET STREQUAL "esp32c3")
-    list(APPEND MICROPY_SOURCE_LIB ${MICROPY_DIR}/shared/runtime/gchelper_generic.c)
-endif()
+
+set(MICROPY_SOURCE_DRIVERS
+    ${MICROPY_DIR}/drivers/bus/softspi.c
+    ${MICROPY_DIR}/drivers/dht/dht.c
+)
 
 set(MICROPY_SOURCE_PORT
-    #${PORT_DIR}/main.c
-    #${PORT_DIR}/uart.c
-    #${PORT_DIR}/usb.c
-    #${PORT_DIR}/usb_serial_jtag.c
-    ${PORT_DIR}/gccollect.c
-    ${PORT_DIR}/mphalport.c
-    #${PORT_DIR}/fatfs_port.c
-    ${PORT_DIR}/help.c
-    ${PORT_DIR}/modutime.c
-    #${PORT_DIR}/machine_bitstream.c
-    #${PORT_DIR}/machine_timer.c
-    #${PORT_DIR}/machine_pin.c
-    #${PORT_DIR}/machine_touchpad.c
-    #${PORT_DIR}/machine_adc.c
-    #${PORT_DIR}/machine_adcblock.c
-    #${PORT_DIR}/machine_dac.c
-    #${PORT_DIR}/machine_i2c.c
-    #${PORT_DIR}/machine_i2s.c
-    #${PORT_DIR}/machine_uart.c
-    #${PORT_DIR}/modmachine.c
-    #${PORT_DIR}/modnetwork.c
-    #${PORT_DIR}/network_lan.c
-    #${PORT_DIR}/network_ppp.c
-    #${PORT_DIR}/network_wlan.c
-    #${PORT_DIR}/mpnimbleport.c
-    #${PORT_DIR}/modsocket.c
-    #${PORT_DIR}/modesp.c
-    #${PORT_DIR}/esp32_nvs.c
-    #${PORT_DIR}/esp32_partition.c
-    #${PORT_DIR}/esp32_rmt.c
-    #${PORT_DIR}/esp32_ulp.c
-    #${PORT_DIR}/modesp32.c
-    #${PORT_DIR}/machine_hw_spi.c
-    #${PORT_DIR}/machine_wdt.c
-    ${PORT_DIR}/mpthreadport.c
-    #${PORT_DIR}/machine_rtc.c
-    #${PORT_DIR}/machine_sdcard.c
+    ${PROJECT_DIR}/micropy.c
+    ${PROJECT_DIR}/uart.c
+    ${PROJECT_DIR}/usb.c
+    ${PROJECT_DIR}/usb_serial_jtag.c
+    ${PROJECT_DIR}/gccollect.c
+    ${PROJECT_DIR}/mphalport.c
+    ${PROJECT_DIR}/fatfs_port.c
+    ${PROJECT_DIR}/help.c
+    ${PROJECT_DIR}/modutime.c
+    ${PROJECT_DIR}/machine_bitstream.c
+    ${PROJECT_DIR}/machine_timer.c
+    ${PROJECT_DIR}/machine_pin.c
+    ${PROJECT_DIR}/machine_touchpad.c
+    ${PROJECT_DIR}/machine_adc.c
+    ${PROJECT_DIR}/machine_adcblock.c
+    ${PROJECT_DIR}/machine_dac.c
+    ${PROJECT_DIR}/machine_i2c.c
+    ${PROJECT_DIR}/machine_i2s.c
+    ${PROJECT_DIR}/machine_uart.c
+    ${PROJECT_DIR}/modmachine.c
+    ${PROJECT_DIR}/network_common.c
+    ${PROJECT_DIR}/network_lan.c
+    ${PROJECT_DIR}/network_ppp.c
+    ${PROJECT_DIR}/network_wlan.c
+    ${PROJECT_DIR}/mpnimbleport.c
+    ${PROJECT_DIR}/modsocket.c
+    ${PROJECT_DIR}/modesp.c
+    ${PROJECT_DIR}/esp32_nvs.c
+    ${PROJECT_DIR}/esp32_partition.c
+    ${PROJECT_DIR}/esp32_rmt.c
+    ${PROJECT_DIR}/esp32_ulp.c
+    ${PROJECT_DIR}/modesp32.c
+    ${PROJECT_DIR}/machine_hw_spi.c
+    ${PROJECT_DIR}/machine_wdt.c
+    ${PROJECT_DIR}/mpthreadport.c
+    ${PROJECT_DIR}/machine_rtc.c
+    ${PROJECT_DIR}/machine_sdcard.c
 )
 
 set(MICROPY_SOURCE_QSTR
@@ -136,18 +155,7 @@ if(IDF_VERSION_MINOR GREATER_EQUAL 3 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
     list(APPEND IDF_COMPONENTS hal)
 endif()
 
-if(IDF_TARGET STREQUAL "esp32")
-    list(APPEND IDF_COMPONENTS esp32)
-elseif(IDF_TARGET STREQUAL "esp32c3")
-    list(APPEND IDF_COMPONENTS esp32c3)
-    list(APPEND IDF_COMPONENTS riscv)
-elseif(IDF_TARGET STREQUAL "esp32s2")
-    list(APPEND IDF_COMPONENTS esp32s2)
-    list(APPEND IDF_COMPONENTS tinyusb)
-elseif(IDF_TARGET STREQUAL "esp32s3")
-    list(APPEND IDF_COMPONENTS esp32s3)
-    list(APPEND IDF_COMPONENTS tinyusb)
-endif()
+list(APPEND IDF_COMPONENTS esp32)
 
 # Register the main IDF component.
 idf_component_register(
@@ -165,8 +173,9 @@ idf_component_register(
         ${MICROPY_PORT_DIR}
         ${MICROPY_BOARD_DIR}
         ${CMAKE_BINARY_DIR}
-		${PORT_DIR}/boards/${BOARD}
-		${PORT_DIR}
+        ${IDF_PATH}/components/bt/host/nimble/nimble
+        ${PROJECT_DIR}
+        ${MICROPY_BOARD_DIR}
     REQUIRES
         ${IDF_COMPONENTS}
 )
@@ -195,10 +204,14 @@ target_compile_options(${MICROPY_TARGET} PUBLIC
     -Wno-missing-field-initializers
 )
 
+# Additional include directories needed for private NimBLE headers.
+target_include_directories(${MICROPY_TARGET} PUBLIC
+    ${IDF_PATH}/components/bt/host/nimble/nimble
+)
+
 # Add additional extmod and usermod components.
 target_link_libraries(${MICROPY_TARGET} micropy_extmod_btree)
 target_link_libraries(${MICROPY_TARGET} usermod)
-
 
 # Collect all of the include directories and compile definitions for the IDF components.
 foreach(comp ${IDF_COMPONENTS})

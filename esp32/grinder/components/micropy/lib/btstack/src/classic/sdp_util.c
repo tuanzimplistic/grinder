@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -43,15 +43,19 @@
 
 #include "bluetooth.h"
 #include "btstack_config.h"
+#include "btstack_debug.h"
 #include "btstack_util.h"
 #include "classic/core.h"
 #include "classic/sdp_util.h"
  
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>   // PRIx32
+
+#ifdef ENABLE_SDP_DES_DUMP
+#include <stdio.h>
+#endif
 
 #ifdef ENABLE_SDP_DES_DUMP
 // workaround for missing PRIx32 on mspgcc (16-bit MCU)
@@ -63,8 +67,8 @@
 const char * const type_names[] = { "NIL", "UINT", "INT", "UUID", "STRING", "BOOL", "DES", "DEA", "URL"};
 #endif
 
-static uint8_t des_serviceSearchPatternUUID16[]  = {0x35, 0x03, 0x19, 0x00, 0x00};
-static uint8_t des_serviceSearchPatternUUID128[] = {
+static uint8_t des_service_search_pattern_uuid16[]  = {0x35, 0x03, 0x19, 0x00, 0x00};
+static uint8_t des_service_search_pattern_uuid128[] = {
     0x35, 0x11, 0x1c, 
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -128,14 +132,14 @@ uint32_t de_get_len_safe(const uint8_t * header, uint32_t size){
     return de_len;
 }
 
-// @returns OK, if UINT16 value was read
+// @return OK, if UINT16 value was read
 int de_element_get_uint16(const uint8_t * element, uint16_t * value){
     if (de_get_size_type(element) != DE_SIZE_16) return 0;
     *value = big_endian_read_16(element, de_get_header_size(element));
     return 1;
 }
 
-// @returns: element is valid UUID
+// @return: element is valid UUID
 int de_get_normalized_uuid(uint8_t *uuid128, const uint8_t *element){
     de_type_t uuidType = de_get_element_type(element);
     de_size_t uuidSize = de_get_size_type(element);
@@ -158,7 +162,7 @@ int de_get_normalized_uuid(uint8_t *uuid128, const uint8_t *element){
     return 1;
 }
 
-// @returns 0 if no UUID16 or UUID32 is present, and UUID32 otherwise
+// @return 0 if no UUID16 or UUID32 is present, and UUID32 otherwise
 uint32_t de_get_uuid32(const uint8_t * element){
     uint8_t uuid128[16];
     int validUuid128 = de_get_normalized_uuid(uuid128, element);
@@ -200,9 +204,9 @@ void de_store_descriptor_with_len(uint8_t * header, de_type_t type, de_size_t si
 /* starts a new sequence in empty buffer - first call */
 void de_create_sequence(uint8_t *header){
     de_store_descriptor_with_len( header, DE_DES, DE_SIZE_VAR_16, 0); // DES, 2 Byte Length
-};
+}
 
-/* starts a sub-sequence, @returns handle for sub-sequence */
+/* starts a sub-sequence, @return handle for sub-sequence */
 uint8_t * de_push_sequence(uint8_t *header){
     int element_len = de_get_len(header);
     de_store_descriptor_with_len(header+element_len, DE_DES, DE_SIZE_VAR_16, 0); // DES, 2 Byte Length
@@ -254,8 +258,10 @@ void de_add_data( uint8_t *seq, de_type_t type, uint16_t size, uint8_t *data){
         de_store_descriptor_with_len(seq+3+data_size, type, DE_SIZE_VAR_8, size); 
         data_size += 2;
     }
-    (void)memcpy(seq + 3 + data_size, data, size);
-    data_size += size;
+    if (size > 0){
+		(void)memcpy(seq + 3 + data_size, data, size);
+		data_size += size;
+    }
     big_endian_store_16(seq, 1, data_size);
 }
 
@@ -274,7 +280,6 @@ bool des_iterator_init(des_iterator_t * it, uint8_t * element){
     it->element = element;
     it->pos = de_get_header_size(element);
     it->length = de_get_len(element);
-    // printf("des_iterator_init current pos %d, total len %d\n", it->pos, it->length);
     return true;
 }
 
@@ -299,7 +304,6 @@ uint8_t * des_iterator_get_element(des_iterator_t * it){
 
 void des_iterator_next(des_iterator_t * it){
     int element_len = de_get_len(&it->element[it->pos]);
-    // printf("des_iterator_next element size %d, current pos %d, total len %d\n", element_len, it->pos, it->length);
     it->pos += element_len;
 }
 
@@ -684,7 +688,9 @@ static int de_traversal_dump_data(uint8_t * element, de_type_t de_type, de_size_
                 break;
         }
         printf("len %u (0x%02x)\n", len, len);
+#ifdef ENABLE_PRINTF_HEXDUMP
         printf_hexdump(&element[pos], len);
+#endif
     } else {
         uint32_t value = 0;
         switch (de_size) {
@@ -715,16 +721,18 @@ void de_dump_data_element(const uint8_t * record){
     de_type_t type = de_get_element_type(record);
     de_size_t size = de_get_size_type(record);
     de_traversal_dump_data((uint8_t *) record, type, size, (void*) &indent);
+#else
+UNUSED(record);
 #endif
 }
 
 uint8_t* sdp_service_search_pattern_for_uuid16(uint16_t uuid16){
-    big_endian_store_16(des_serviceSearchPatternUUID16, 3, uuid16);
-    return (uint8_t*)des_serviceSearchPatternUUID16;
+    big_endian_store_16(des_service_search_pattern_uuid16, 3, uuid16);
+    return (uint8_t*)des_service_search_pattern_uuid16;
 }
 
 uint8_t* sdp_service_search_pattern_for_uuid128(const uint8_t * uuid128){
-    (void)memcpy(&des_serviceSearchPatternUUID128[3], uuid128, 16);
-    return (uint8_t*)des_serviceSearchPatternUUID128;
+    (void)memcpy(&des_service_search_pattern_uuid128[3], uuid128, 16);
+    return (uint8_t*)des_service_search_pattern_uuid128;
 }
 

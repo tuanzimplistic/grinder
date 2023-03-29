@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,6 +35,11 @@
  *
  */
 
+/**
+ * OBEX Message Builder
+ *
+ */
+
 #ifndef OBEX_MESSAGE_BUILDER_H
 #define OBEX_MESSAGE_BUILDER_H
 
@@ -43,8 +48,6 @@ extern "C" {
 #endif
  
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "btstack_defines.h"
@@ -57,6 +60,12 @@ extern "C" {
 // buffer is too small.
 
 /* API_START */
+/**
+ * @brief Get message lenght
+ * @param buffer
+ * @return buffer_length
+ */
+uint16_t obex_message_builder_get_message_length(uint8_t * buffer);
 
 /**
  * @brief Start Connect request
@@ -68,6 +77,36 @@ extern "C" {
  * @return status
  */
 uint8_t obex_message_builder_request_create_connect(uint8_t * buffer, uint16_t buffer_len, uint8_t obex_version_number, uint8_t flags, uint16_t maximum_obex_packet_length);
+
+/**
+ * @brief Start Connect response
+ * @param buffer
+ * @param buffer_len
+ * @param obex_version_number
+ * @param flags
+ * @param maximum_obex_packet_length
+ * @param connection_id
+ * @return status
+ */
+uint8_t obex_message_builder_response_create_connect(uint8_t * buffer, uint16_t buffer_len, uint8_t obex_version_number, uint8_t flags, uint16_t maximum_obex_packet_length, uint32_t connection_id);
+
+/**
+ * @brief Start General response with given response code
+ * @param buffer
+ * @param buffer_len
+ * @param response_code
+ * @return status
+ */
+ uint8_t obex_message_builder_response_create_general(uint8_t * buffer, uint16_t buffer_len, uint8_t response_code);
+
+/**
+ * @brief Update response code
+ * @param buffer
+ * @param buffer_len
+ * @param response_code
+ * @return status
+ */
+uint8_t obex_message_builder_response_update_code(uint8_t * buffer, uint16_t buffer_len, uint8_t response_code);
 
 /**
  * @brief Start Disconnect request
@@ -158,20 +197,40 @@ uint8_t obex_message_builder_header_add_variable(uint8_t * buffer, uint16_t buff
  * @brief Add name header to current request
  * @param buffer
  * @param buffer_len
- * @param name
+ * @param name with trailing '\0'
  * @return status
  */
 uint8_t obex_message_builder_header_add_name(uint8_t * buffer, uint16_t buffer_len, const char * name);
+
+/**
+ * @brief Add name header to current request
+ * @param buffer
+ * @param buffer_len
+ * @param name
+ * @param name_len
+ * @return status
+ */
+uint8_t obex_message_builder_header_add_name_prefix(uint8_t * buffer, uint16_t buffer_len, const char * name, uint16_t name_len);
 
 /**
  * @brief Add target header to current request
  * @param buffer
  * @param buffer_len
  * @param target
- * @param lenght of target
+ * @param length of target
  * @return status
  */
 uint8_t obex_message_builder_header_add_target(uint8_t * buffer, uint16_t buffer_len, const uint8_t * target, uint16_t length);
+
+/**
+ * @brief Add target header to current request
+ * @param buffer
+ * @param buffer_len
+ * @param who  fixed len of 16 bytes
+ * @return status
+ */
+uint8_t obex_message_builder_header_add_who(uint8_t * buffer, uint16_t buffer_len, const uint8_t * who);
+
 
 /**
  * @brief Add type header to current request
@@ -196,7 +255,7 @@ uint8_t obex_message_builder_header_add_count(uint8_t * buffer, uint16_t buffer_
  * @param buffer
  * @param buffer_len
  * @param data 
- * @param lenght of application parameters
+ * @param length of application parameters
  * @return status
  */
 uint8_t obex_message_builder_header_add_application_parameters(uint8_t * buffer, uint16_t buffer_len, const uint8_t * data, uint16_t length);
@@ -206,7 +265,7 @@ uint8_t obex_message_builder_header_add_application_parameters(uint8_t * buffer,
  * @param buffer
  * @param buffer_len
  * @param data
- * @param lenght of challenge response
+ * @param length of challenge response
  * @return status
  */
 uint8_t obex_message_builder_header_add_challenge_response(uint8_t * buffer, uint16_t buffer_len, const uint8_t * data, uint16_t length);
@@ -216,7 +275,7 @@ uint8_t obex_message_builder_header_add_challenge_response(uint8_t * buffer, uin
  * @param buffer
  * @param buffer_len
  * @param data
- * @param lenght 
+ * @param length 
  * @return status
  */
 uint8_t obex_message_builder_body_add_static(uint8_t * buffer, uint16_t buffer_len, const uint8_t * data, uint32_t length);

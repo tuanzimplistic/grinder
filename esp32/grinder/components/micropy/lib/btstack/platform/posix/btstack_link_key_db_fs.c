@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -67,17 +67,8 @@ static bd_addr_t local_addr;
 // note: sizeof for string literals works at compile time while strlen only works with some optimizations turned on. sizeof includes the  \0
 static char keypath[sizeof(LINK_KEY_PATH) + sizeof(LINK_KEY_PREFIX) + LINK_KEY_STRING_LEN + sizeof(LINK_KEY_FOR) + LINK_KEY_STRING_LEN + sizeof(LINK_KEY_SUFFIX) + 1];
 
-static char bd_addr_to_dash_str_buffer[6*3];  // 12-45-78-01-34-67\0
 static char * bd_addr_to_dash_str(bd_addr_t addr){
-    char * p = bd_addr_to_dash_str_buffer;
-    int i;
-    for (i = 0; i < 6 ; i++) {
-        *p++ = char_for_nibble((addr[i] >> 4) & 0x0F);
-        *p++ = char_for_nibble((addr[i] >> 0) & 0x0F);
-        *p++ = '-';
-    }
-    *--p = 0;
-    return (char *) bd_addr_to_dash_str_buffer;
+    return bd_addr_to_str_with_delimiter(addr, '-');
 }
 
 static char link_key_to_str_buffer[LINK_KEY_STR_LEN+1];  // 11223344556677889900112233445566\0
@@ -148,6 +139,10 @@ static void put_link_key(bd_addr_t bd_addr, link_key_t link_key, link_key_type_t
     char * link_key_type_str = link_key_type_to_str(link_key_type); 
 
     FILE * wFile = fopen(keypath,"w+");
+    if (wFile == NULL){
+        log_error("failed to create file");
+        return;
+    }
     fwrite(link_key_str, strlen(link_key_str), 1, wFile);
     fwrite(link_key_type_str, strlen(link_key_type_str), 1, wFile);
     fclose(wFile);
@@ -160,6 +155,7 @@ static int read_link_key(const char * path, link_key_t link_key, link_key_type_t
     char link_key_type_str[2];
 
     FILE * rFile = fopen(path,"r+");
+    if (rFile == NULL) return 0;
     size_t objects_read = fread(link_key_str, LINK_KEY_STR_LEN, 1, rFile );
     if (objects_read == 1){
         link_key_str[LINK_KEY_STR_LEN] = 0;

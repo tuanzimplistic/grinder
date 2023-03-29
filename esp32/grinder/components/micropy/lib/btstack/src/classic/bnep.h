@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,10 +35,13 @@
  *
  */
 
-/*
- * bnep.h
- * Author: Ole Reinhardt <ole.reinhardt@kernelconcepts.de>
+/**
+ * @title BNEP
  *
+ */
+
+/**
+ * @author: Ole Reinhardt <ole.reinhardt@kernelconcepts.de>
  */
 
 #ifndef BNEP_H
@@ -194,6 +197,7 @@ int bnep_set_multicast_filter(uint16_t bnep_cid, bnep_multi_filter_t *filter, ui
 
 /**
  * @brief Set security level required for incoming connections, need to be called before registering services.
+ * @deprecated use gap_set_security_level instead
  */
 void bnep_set_required_security_level(gap_security_level_t security_level);
 
@@ -216,6 +220,12 @@ uint8_t bnep_register_service(btstack_packet_handler_t packet_handler, uint16_t 
  * @brief Unregister BNEP service.
  */
 void bnep_unregister_service(uint16_t service_uuid);
+
+/**
+ * @brief De-Init BNEP
+ */
+void bnep_deinit(void);
+
 /* API_END */
 
 #if defined __cplusplus

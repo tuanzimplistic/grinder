@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title Device Information Service Server
+ * 
+ */
+
 #ifndef DEVICE_INFORMATION_SERVICE_SERVER_H
 #define DEVICE_INFORMATION_SERVICE_SERVER_H
 
@@ -46,13 +52,13 @@ extern "C" {
 /* API_START */
 
 /**
- * Implementation of the Device Information Service Server 
+ * @text Th eDevice Information Service allows to query manufacturer and/or 
+ * vendor information about a device.
+ * 
+ * To use with your application, add `#import <device_information_service.gatt>` to your .gatt file. 
  *
- * To use with your application, add '#import <device_information_sevice.gatt' to your .gatt file
- * and call all functions below. All strings and blobs need to stay valid after calling the functions.
- *
- * @note: instead of calling all setters, you can create a local copy of the .gatt file and remove
- * all Characteristics that are not relevant for your application and define all fixed values in the .gatt file
+ * *Note*: instead of calling all setters, you can create a local copy of the .gatt file and remove
+ * all Characteristics that are not relevant for your application and define all fixed values in the .gatt file.
  */
 
 /**

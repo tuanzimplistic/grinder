@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,10 +35,11 @@
  *
  */
 
-/*
- *  btstack_debug.h
+/**
+ * @title Debug Messages
  *
- *  allow to funnel debug & error messages 
+ * Allow to funnel debug and error messages. 
+ *
  */
 
 #ifndef DEBUG_H
@@ -48,14 +49,18 @@
 #include "btstack_defines.h"
 #include "hci_dump.h"
 
-#include <stdio.h>
+#if defined __cplusplus
+extern "C" {
+#endif
 
 #ifdef __AVR__
 #include <avr/pgmspace.h>
 #endif
 
 #ifdef HAVE_ASSERT
+#ifndef btstack_assert
 #include <assert.h>
+#endif
 #endif
 
 // fallback to __FILE__ for untagged files
@@ -64,8 +69,11 @@
 #endif
 
 #ifdef HAVE_ASSERT
+// allow to override btstack_assert in btstack_config.h
+#ifndef btstack_assert
 // map to libc assert
 #define btstack_assert(condition)  assert(condition)
+#endif /* btstack_assert */
 #else /* HAVE_ASSERT */
 #ifdef ENABLE_BTSTACK_ASSERT
 void btstack_assert_failed(const char * file, uint16_t line_nr);
@@ -73,10 +81,17 @@ void btstack_assert_failed(const char * file, uint16_t line_nr);
 // use btstack macro that calls btstack_assert_failed() - provided by port
 #define btstack_assert(condition)         if (condition) {} else { btstack_assert_failed(BTSTACK_FILE__, __LINE__);  }
 #endif
-#else /* btstack_assert */
+#else /* ENABLE_BTSTACK_ASSERT */
 // asserts off
 #define btstack_assert(condition)         {}
-#endif
+#endif /* btstack_assert */
+#endif /* HAVE_ASSERT */
+
+// mark code that should not be reached. Similar to assert, but mapped to NOP for coverage
+#ifdef UNIT_TEST
+#define btstack_unreachable()
+#else
+#define btstack_unreachable() btstack_assert(false)
 #endif
 
 // allow to provide port specific printf
@@ -89,7 +104,7 @@ void btstack_assert_failed(const char * file, uint16_t line_nr);
 #endif
 
 #ifdef __AVR__
-#define HCI_DUMP_LOG(log_level, format, ...) hci_dump_log_P(log_level, PSTR("%s.%u: " format), BTSTACK_FILE__, __LINE__, ## __VA_ARGS__)
+#define HCI_DUMP_LOG(log_level, format, ...) hci_dump_log_P(log_level, PSTR("%S.%u: " format), PSTR(BTSTACK_FILE__), __LINE__, ## __VA_ARGS__)
 #else
 #define HCI_DUMP_LOG(log_level, format, ...) hci_dump_log(log_level, "%s.%u: " format, BTSTACK_FILE__, __LINE__, ## __VA_ARGS__)
 #endif
@@ -112,8 +127,11 @@ void btstack_assert_failed(const char * file, uint16_t line_nr);
 #define log_error(...) (void)(0)
 #endif
 
+/* API_START */
+
 /** 
  * @brief Log Security Manager key via log_info
+ * @param name
  * @param key to log
  */
 void log_info_key(const char * name, sm_key_t key);
@@ -126,9 +144,16 @@ void log_info_key(const char * name, sm_key_t key);
 void log_info_hexdump(const void *data, int size);
 
 /**
- * @brief Hexdump via log_debug * @param data
+ * @brief Hexdump via log_debug 
+ * @param data
  * @param size
  */
 void log_debug_hexdump(const void *data, int size);
+
+/* API_END */
+
+#if defined __cplusplus
+}
+#endif
 
 #endif // DEBUG_H

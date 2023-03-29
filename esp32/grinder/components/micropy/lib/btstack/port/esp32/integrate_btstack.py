@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # Add btstack component to esp-idf
@@ -40,6 +40,7 @@ dirs_to_copy = [
 '3rd-party/bluedroid',
 '3rd-party/hxcmod-player',
 '3rd-party/lwip/dhcp-server',
+'3rd-party/lc3-google',
 '3rd-party/md5',
 '3rd-party/micro-ecc',
 '3rd-party/yxml',
@@ -52,6 +53,9 @@ dirs_to_copy = [
 for dir in dirs_to_copy:
 	print('- %s' % dir)
 	shutil.copytree(local_dir + '/../../' + dir, IDF_BTSTACK + '/' + dir)
+
+# add hci dump stdout
+shutil.copy(local_dir+'/../../platform/embedded/hci_dump_embedded_stdout.c', IDF_BTSTACK)
 
 # create example/btstack
 create_examples.create_examples(local_dir, '')

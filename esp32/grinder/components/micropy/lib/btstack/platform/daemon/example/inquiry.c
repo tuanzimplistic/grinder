@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -135,13 +135,13 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
 		case W4_INQUIRY_MODE_COMPLETE:
 			switch(event){
 				case HCI_EVENT_COMMAND_COMPLETE:
-					if (HCI_EVENT_IS_COMMAND_COMPLETE(packet, hci_write_inquiry_mode)) {
+					if (hci_event_command_complete_get_command_opcode(packet) == HCI_OPCODE_HCI_WRITE_INQUIRY_MODE){
 						start_scan();
 						state = ACTIVE;
 					}
 					break;
 				case HCI_EVENT_COMMAND_STATUS:
-					if (HCI_EVENT_IS_COMMAND_STATUS(packet, hci_write_inquiry_mode)) {
+					if (hci_event_command_complete_get_command_opcode(packet) == HCI_OPCODE_HCI_WRITE_INQUIRY_MODE){
 						printf("Ignoring error (0x%x) from hci_write_inquiry_mode.\n", packet[2]);
 						start_scan();
 						state = ACTIVE;

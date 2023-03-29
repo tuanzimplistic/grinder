@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,8 +35,9 @@
  *
  */
 
-/*
- *  btstack_base64_decoder.h
+/**
+ * @title base64 Decoder
+ *
  */
 
 #ifndef BTSTACK_BASE_64_DECODER_H
@@ -44,10 +45,16 @@
 
 #include <stdint.h>
 
+#if defined __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     uint8_t pos;
     uint8_t value;
 } btstack_base64_decoder_t;
+
+/* API_START */
 
 #define BTSTACK_BASE64_DECODER_MORE     -1
 #define BTSTACK_BASE64_DECODER_COMPLETE -2
@@ -63,7 +70,7 @@ void btstack_base64_decoder_init(btstack_base64_decoder_t * context);
 /**
  * @brief Decode single byte
  * @brief context
- * @returns value, or BTSTACK_BASE64_DECODER_MORE, BTSTACK_BASE64_DECODER_COMPLETE, BTSTACK_BASE64_DECODER_INVALID
+ * @return value, or BTSTACK_BASE64_DECODER_MORE, BTSTACK_BASE64_DECODER_COMPLETE, BTSTACK_BASE64_DECODER_INVALID
  */
 int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uint8_t c);
 
@@ -77,4 +84,10 @@ int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uin
  */
 int btstack_base64_decoder_process_block(const uint8_t * input_data, uint32_t input_size, uint8_t * output_buffer, uint32_t output_max_size);
 
+/* API_END */
+
+#if defined __cplusplus
+}
 #endif
+
+#endif // BTSTACK_BASE_64_DECODER_H

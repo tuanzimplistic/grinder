@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -52,80 +52,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void btstack_run_loop_windows_dump_timer(void);
-
-// the run loop
-static btstack_linked_list_t data_sources;
-static int data_sources_modified;
-static btstack_linked_list_t timers;
-// start time. 
+// start time.
 static ULARGE_INTEGER start_time;
 
-/**
- * Add data_source to run_loop
- */
-static void btstack_run_loop_windows_add_data_source(btstack_data_source_t *ds){
-    data_sources_modified = 1;
-    // log_info("btstack_run_loop_windows_add_data_source %x with fd %u\n", (int) ds, ds->fd);
-    btstack_linked_list_add(&data_sources, (btstack_linked_item_t *) ds);
-}
+static bool run_loop_exit_requested;
 
-/**
- * Remove data_source from run loop
- */
-static bool btstack_run_loop_windows_remove_data_source(btstack_data_source_t *ds){
-    data_sources_modified = 1;
-    // log_info("btstack_run_loop_windows_remove_data_source %x\n", (int) ds);
-    return btstack_linked_list_remove(&data_sources, (btstack_linked_item_t *) ds);
-}
-
-/**
- * Add timer to run_loop (keep list sorted)
- */
-static void btstack_run_loop_windows_add_timer(btstack_timer_source_t *ts){
-    btstack_linked_item_t *it;
-    for (it = (btstack_linked_item_t *) &timers; it->next ; it = it->next){
-        btstack_timer_source_t * next = (btstack_timer_source_t *) it->next;
-        if (next == ts){
-            log_error( "btstack_run_loop_timer_add error: timer to add already in list!");
-            return;
-        }
-        // exit if list timeout is after new timeout
-        uint32_t list_timeout = ((btstack_timer_source_t *) it->next)->timeout;
-        int32_t delta = btstack_time_delta(ts->timeout, list_timeout);
-        if (delta < 0) break;
-    }
-    ts->item.next = it->next;
-    it->next = (btstack_linked_item_t *) ts;
-    log_debug("Added timer %p at %u\n", ts, ts->timeout);
-    // btstack_run_loop_windows_dump_timer();
-}
-
-/**
- * Remove timer from run loop
- */
-static bool btstack_run_loop_windows_remove_timer(btstack_timer_source_t *ts){
-    // log_info("Removed timer %x at %u\n", (int) ts, (unsigned int) ts->timeout.tv_sec);
-    // btstack_run_loop_windows_dump_timer();
-    return btstack_linked_list_remove(&timers, (btstack_linked_item_t *) ts);
-}
-
-static void btstack_run_loop_windows_dump_timer(void){
-    btstack_linked_item_t *it;
-    int i = 0;
-    for (it = (btstack_linked_item_t *) timers; it ; it = it->next){
-        btstack_timer_source_t *ts = (btstack_timer_source_t*) it;
-        log_info("timer %u, timeout %u\n", i, ts->timeout);
-    }
-}
-
-static void btstack_run_loop_windows_enable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags |= callback_types;
-}
-
-static void btstack_run_loop_windows_disable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags &= ~callback_types;
-}
+// to trigger run loop from other thread
+static HANDLE btstack_run_loop_windows_callbacks_mutex;
+static btstack_data_source_t btstack_run_loop_windows_process_callbacks_ds;
+static btstack_data_source_t btstack_run_loop_windows_poll_data_sources_ds;
 
 /**
  * @brief Queries the current time in ms since start
@@ -139,7 +74,7 @@ static uint32_t btstack_run_loop_windows_get_time_ms(void){
     SystemTimeToFileTime(&system_time, &file_time);
     now_time.LowPart =  file_time.dwLowDateTime;
     now_time.HighPart = file_time.dwHighDateTime;
-    uint32_t time_ms = (now_time.QuadPart - start_time.QuadPart) / 10000; 
+    uint32_t time_ms = (uint32_t)((now_time.QuadPart - start_time.QuadPart) / 10000);
     log_debug("btstack_run_loop_windows_get_time_ms: %u", time_ms);
     return time_ms;
 }
@@ -149,16 +84,25 @@ static uint32_t btstack_run_loop_windows_get_time_ms(void){
  */
 static void btstack_run_loop_windows_execute(void) {
 
-    btstack_timer_source_t *ts;
     btstack_linked_list_iterator_t it;
 
     while (true) {
 
+        // process timers
+        uint32_t now_ms = btstack_run_loop_windows_get_time_ms();
+        btstack_run_loop_base_process_timers(now_ms);
+
+        // get next timeout
+        int32_t timeout_ms = btstack_run_loop_base_get_time_until_timeout(now_ms);
+        if (timeout_ms < 0){
+            timeout_ms = INFINITE;
+        }
+
         // collect handles to wait for
         HANDLE handles[100];
         memset(handles, 0, sizeof(handles));
-        int num_handles = 0;     
-        btstack_linked_list_iterator_init(&it, &data_sources);
+        int num_handles = 0;
+        btstack_linked_list_iterator_init(&it, &btstack_run_loop_base_data_sources);
         while (btstack_linked_list_iterator_has_next(&it)){
             btstack_data_source_t *ds = (btstack_data_source_t*) btstack_linked_list_iterator_next(&it);
             if (ds->source.handle == 0) continue;
@@ -168,19 +112,8 @@ static void btstack_run_loop_windows_execute(void) {
             }
         }
 
-        // get next timeout
-        int32_t timeout_ms = INFINITE;
-        if (timers) {
-            ts = (btstack_timer_source_t *) timers;
-            uint32_t now_ms = btstack_run_loop_windows_get_time_ms();
-            timeout_ms = btstack_time_delta(ts->timeout, now_ms);
-            if (timeout_ms < 0){
-                timeout_ms = 0;
-            }
-            log_debug("btstack_run_loop_execute next timeout in %u ms", timeout_ms);
-        }
-        
-        int res;
+        // wait for timeout or data source to become ready
+        DWORD res;
         if (num_handles){
             // wait for ready Events or timeout
             res = WaitForMultipleObjects(num_handles, &handles[0], 0, timeout_ms);
@@ -189,11 +122,11 @@ static void btstack_run_loop_windows_execute(void) {
             Sleep(timeout_ms);
             res = WAIT_TIMEOUT;
         }
-        
+
         // process data source
         if (WAIT_OBJECT_0 <= res && res < (WAIT_OBJECT_0 + num_handles)){
             void * triggered_handle = handles[res - WAIT_OBJECT_0];
-            btstack_linked_list_iterator_init(&it, &data_sources);
+            btstack_linked_list_iterator_init(&it, &btstack_run_loop_base_data_sources);
             while (btstack_linked_list_iterator_has_next(&it)){
                 btstack_data_source_t *ds = (btstack_data_source_t*) btstack_linked_list_iterator_next(&it);
                 log_debug("btstack_run_loop_windows_execute: check ds %p with handle %p\n", ds, ds->source.handle);
@@ -209,19 +142,11 @@ static void btstack_run_loop_windows_execute(void) {
                 }
             }
         }
-
-        // process timers
-        uint32_t now_ms = btstack_run_loop_windows_get_time_ms();
-        while (timers) {
-            ts = (btstack_timer_source_t *) timers;
-            if (ts->timeout > now_ms) break;
-            log_debug("btstack_run_loop_windows_execute: process timer %p\n", ts);
-            
-            // remove timer before processing it to allow handler to re-register with run loop
-            btstack_run_loop_windows_remove_timer(ts);
-            ts->process(ts);
-        }
     }
+}
+
+static void btstack_run_loop_windows_trigger_exit(void){
+    run_loop_exit_requested = true;
 }
 
 // set timer
@@ -231,9 +156,51 @@ static void btstack_run_loop_windows_set_timer(btstack_timer_source_t *a, uint32
     log_debug("btstack_run_loop_windows_set_timer to %u ms (now %u, timeout %u)", a->timeout, time_ms, timeout_in_ms);
 }
 
+static void btstack_run_loop_windows_process_callbacks_handler(btstack_data_source_t * ds, btstack_data_source_callback_type_t callback_type){
+    UNUSED(callback_type);
+
+    // execute callbacks
+    while (1){
+        // protect list with mutex (Win32 style)
+        DWORD dwWaitResult = WaitForSingleObject( btstack_run_loop_windows_callbacks_mutex, INFINITE);
+        if (dwWaitResult != WAIT_OBJECT_0) return;
+
+        btstack_context_callback_registration_t * callback_registration = (btstack_context_callback_registration_t *) btstack_linked_list_pop(&btstack_run_loop_base_callbacks);
+        ReleaseMutex(btstack_run_loop_windows_callbacks_mutex);
+
+        if (callback_registration == NULL){
+            break;
+        }
+        (*callback_registration->callback)(callback_registration->context);
+    }
+}
+
+static void btstack_run_loop_windows_execute_on_main_thread(btstack_context_callback_registration_t * callback_registration){
+    if (btstack_run_loop_windows_process_callbacks_ds.source.handle == NULL) return;
+
+    // protect list with mutex (Win32 style)
+    DWORD dwWaitResult = WaitForSingleObject( btstack_run_loop_windows_callbacks_mutex, INFINITE);
+    if (dwWaitResult != WAIT_OBJECT_0) return;
+
+    // We own mutex now, add callback to list
+    btstack_run_loop_base_add_callback(callback_registration);
+    ReleaseMutex(btstack_run_loop_windows_callbacks_mutex);
+    // trigger run loop
+    SetEvent(btstack_run_loop_windows_process_callbacks_ds.source.handle);
+}
+
+
+static void btstack_run_loop_windows_poll_data_sources_handler(btstack_data_source_t * ds, btstack_data_source_callback_type_t callback_type){
+    UNUSED(callback_type);
+    btstack_run_loop_base_poll_data_sources();
+}
+
+static void btstack_run_loop_windows_poll_data_sources_from_irq(void){
+    SetEvent(btstack_run_loop_windows_poll_data_sources_ds.source.handle);
+}
+
 static void btstack_run_loop_windows_init(void){
-    data_sources = NULL;
-    timers = NULL;
+    btstack_run_loop_base_init();
 
     // store start time
     FILETIME    file_time;
@@ -243,22 +210,43 @@ static void btstack_run_loop_windows_init(void){
     start_time.LowPart =  file_time.dwLowDateTime;
     start_time.HighPart = file_time.dwHighDateTime;
 
-    log_debug("btstack_run_loop_windows_init");
-}
+    // Create mutex with no initial owner
+    btstack_run_loop_windows_callbacks_mutex = CreateMutex(
+        NULL,              // default security attributes
+        FALSE,             // initially not owned
+        NULL);             // unnamed mutex
+    if (btstack_run_loop_windows_callbacks_mutex == NULL){
+        log_info("CreateMutex error: %ld\n", GetLastError());
+        return;
+    }
 
+    // create Event that can be notified from other thread. bManualReset is fALSE => Object is auto-reset
+    btstack_run_loop_windows_process_callbacks_ds.source.handle  = CreateEvent(NULL, FALSE, FALSE, NULL);
+    btstack_run_loop_enable_data_source_callbacks(&btstack_run_loop_windows_process_callbacks_ds, DATA_SOURCE_CALLBACK_READ);
+    btstack_run_loop_set_data_source_handler(&btstack_run_loop_windows_process_callbacks_ds, &btstack_run_loop_windows_process_callbacks_handler);
+    btstack_run_loop_add_data_source(&btstack_run_loop_windows_process_callbacks_ds);
+
+    btstack_run_loop_windows_poll_data_sources_ds.source.handle  = CreateEvent(NULL, FALSE, FALSE, NULL);
+    btstack_run_loop_enable_data_source_callbacks(&btstack_run_loop_windows_poll_data_sources_ds, DATA_SOURCE_CALLBACK_READ);
+    btstack_run_loop_set_data_source_handler(&btstack_run_loop_windows_poll_data_sources_ds, &btstack_run_loop_windows_poll_data_sources_handler);
+    btstack_run_loop_add_data_source(&btstack_run_loop_windows_poll_data_sources_ds);
+}
 
 static const btstack_run_loop_t btstack_run_loop_windows = {
     &btstack_run_loop_windows_init,
-    &btstack_run_loop_windows_add_data_source,
-    &btstack_run_loop_windows_remove_data_source,
-    &btstack_run_loop_windows_enable_data_source_callbacks,
-    &btstack_run_loop_windows_disable_data_source_callbacks,
+    &btstack_run_loop_base_add_data_source,
+    &btstack_run_loop_base_remove_data_source,
+    &btstack_run_loop_base_enable_data_source_callbacks,
+    &btstack_run_loop_base_disable_data_source_callbacks,
     &btstack_run_loop_windows_set_timer,
-    &btstack_run_loop_windows_add_timer,
-    &btstack_run_loop_windows_remove_timer,
+    &btstack_run_loop_base_add_timer,
+    &btstack_run_loop_base_remove_timer,
     &btstack_run_loop_windows_execute,
-    &btstack_run_loop_windows_dump_timer,
+    &btstack_run_loop_base_dump_timer,
     &btstack_run_loop_windows_get_time_ms,
+    &btstack_run_loop_windows_poll_data_sources_from_irq,
+    &btstack_run_loop_windows_execute_on_main_thread,
+    &btstack_run_loop_windows_trigger_exit
 };
 
 /**

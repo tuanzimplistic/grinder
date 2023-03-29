@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -48,14 +48,15 @@
 
 #define PA_SAMPLE_TYPE               paInt16
 #define NUM_FRAMES_PER_PA_BUFFER       512
-#define NUM_OUTPUT_BUFFERS               3
+#define NUM_OUTPUT_BUFFERS               5
 #define NUM_INPUT_BUFFERS                2
 #define DRIVER_POLL_INTERVAL_MS          5
 
 #include <portaudio.h>
 
 // config
-static int                    num_channels;
+static int                    num_channels_sink;
+static int                    num_channels_source;
 static int                    num_bytes_per_sample_sink;
 static int                    num_bytes_per_sample_source;
 
@@ -68,6 +69,8 @@ static int sink_initialized;
 static int source_active;
 static int sink_active;
 
+static uint8_t sink_volume;
+
 static PaStream * stream_source;
 static PaStream * stream_sink;
 
@@ -76,10 +79,8 @@ static void (*playback_callback)(int16_t * buffer, uint16_t num_samples);
 static void (*recording_callback)(const int16_t * buffer, uint16_t num_samples);
 
 // output buffer
-static int16_t               output_buffer_a[NUM_FRAMES_PER_PA_BUFFER * 2];   // stereo
-static int16_t               output_buffer_b[NUM_FRAMES_PER_PA_BUFFER * 2];   // stereo
-static int16_t               output_buffer_c[NUM_FRAMES_PER_PA_BUFFER * 2];   // stereo
-static int16_t             * output_buffers[NUM_OUTPUT_BUFFERS] = { output_buffer_a, output_buffer_b, output_buffer_c};
+static int16_t               output_buffer_storage[NUM_OUTPUT_BUFFERS * NUM_FRAMES_PER_PA_BUFFER * 2];   // stereo
+static int16_t             * output_buffers[NUM_OUTPUT_BUFFERS];
 static int                   output_buffer_to_play;
 static int                   output_buffer_to_fill;
 
@@ -97,7 +98,7 @@ static btstack_timer_source_t  driver_timer_source;
 
 static int portaudio_callback_sink( const void *                     inputBuffer, 
                                     void *                           outputBuffer,
-                                    unsigned long                    samples_per_buffer,
+                                    unsigned long                    frames_per_buffer,
                                     const PaStreamCallbackTimeInfo * timeInfo,
                                     PaStreamCallbackFlags            statusFlags,
                                     void *                           userData ) {
@@ -107,11 +108,29 @@ static int portaudio_callback_sink( const void *                     inputBuffer
     (void) timeInfo; /* Prevent unused variable warnings. */
     (void) statusFlags;
     (void) userData;
-    (void) samples_per_buffer;
+    (void) frames_per_buffer;
     (void) inputBuffer;
 
-    // fill from one of our buffers
-    memcpy(outputBuffer, output_buffers[output_buffer_to_play], NUM_FRAMES_PER_PA_BUFFER * num_bytes_per_sample_sink);
+    // simplified volume control
+    uint16_t index;
+    int16_t * from_buffer = output_buffers[output_buffer_to_play];
+    int16_t * to_buffer = (int16_t *) outputBuffer;
+    btstack_assert(frames_per_buffer == NUM_FRAMES_PER_PA_BUFFER);
+
+#if 0
+    // up to 8 right shifts
+    int right_shift = 8 - btstack_min(8, ((sink_volume + 15) / 16));
+    for (index = 0; index < (NUM_FRAMES_PER_PA_BUFFER * num_channels_sink); index++){
+        *to_buffer++ = (*from_buffer++) >> right_shift;
+    }
+#else
+    // multiply with volume ^ 4
+    int16_t x2 = sink_volume * sink_volume;
+    int16_t x4 = (x2 * x2) >> 14;
+    for (index = 0; index < (NUM_FRAMES_PER_PA_BUFFER * num_channels_sink); index++){
+        *to_buffer++ = ((*from_buffer++) * x4) >> 14;
+    }
+#endif
 
     // next
     output_buffer_to_play = (output_buffer_to_play + 1 ) % NUM_OUTPUT_BUFFERS;
@@ -146,7 +165,7 @@ static int portaudio_callback_source( const void *                     inputBuff
 static void driver_timer_handler_sink(btstack_timer_source_t * ts){
 
     // playback buffer ready to fill
-    if (output_buffer_to_play != output_buffer_to_fill){
+    while (output_buffer_to_play != output_buffer_to_fill){
         (*playback_callback)(output_buffers[output_buffer_to_fill], NUM_FRAMES_PER_PA_BUFFER);
 
         // next
@@ -181,8 +200,13 @@ static int btstack_audio_portaudio_sink_init(
 ){
     PaError err;
 
-    num_channels = channels;
+    num_channels_sink = channels;
     num_bytes_per_sample_sink = 2 * channels;
+
+    uint8_t i;
+    for (i=0;i<NUM_OUTPUT_BUFFERS;i++){
+        output_buffers[i] = &output_buffer_storage[i * NUM_FRAMES_PER_PA_BUFFER * 2];
+    }
 
     if (!playback){
         log_error("No playback callback");
@@ -210,6 +234,7 @@ static int btstack_audio_portaudio_sink_init(
     const PaDeviceInfo *outputDeviceInfo;
     outputDeviceInfo = Pa_GetDeviceInfo( theOutputParameters.device );
     log_info("PortAudio: sink device: %s", outputDeviceInfo->name);
+    UNUSED(outputDeviceInfo);
 
     /* -- setup stream -- */
     err = Pa_OpenStream(
@@ -230,10 +255,12 @@ static int btstack_audio_portaudio_sink_init(
 
     const PaStreamInfo * stream_info = Pa_GetStreamInfo(stream_sink);
     log_info("PortAudio: sink latency: %f", stream_info->outputLatency);
+    UNUSED(stream_info);
 
     playback_callback  = playback;
 
     sink_initialized = 1;
+    sink_volume = 127;
 
     return 0;
 }
@@ -245,7 +272,7 @@ static int btstack_audio_portaudio_source_init(
 ){
     PaError err;
 
-    num_channels = channels;
+    num_channels_source = channels;
     num_bytes_per_sample_source = 2 * channels;
 
     if (!recording){
@@ -274,6 +301,7 @@ static int btstack_audio_portaudio_source_init(
     const PaDeviceInfo *inputDeviceInfo;
     inputDeviceInfo = Pa_GetDeviceInfo( theInputParameters.device );
     log_info("PortAudio: source device: %s", inputDeviceInfo->name);
+    UNUSED(inputDeviceInfo);
 
     /* -- setup stream -- */
     err = Pa_OpenStream(
@@ -294,6 +322,7 @@ static int btstack_audio_portaudio_source_init(
 
     const PaStreamInfo * stream_info = Pa_GetStreamInfo(stream_source);
     log_info("PortAudio: source latency: %f", stream_info->inputLatency);
+    UNUSED(stream_info);
 
     recording_callback = recording;
 
@@ -302,15 +331,25 @@ static int btstack_audio_portaudio_source_init(
     return 0;
 }
 
+static void btstack_audio_portaudio_sink_set_volume(uint8_t volume){
+    sink_volume = volume;
+}
+
+static void btstack_audio_portaudio_source_set_gain(uint8_t gain){
+    UNUSED(gain);
+}
+
 static void btstack_audio_portaudio_sink_start_stream(void){
 
     if (!playback_callback) return;
 
-    // fill buffer once
-    (*playback_callback)(output_buffer_a, NUM_FRAMES_PER_PA_BUFFER);
-    (*playback_callback)(output_buffer_b, NUM_FRAMES_PER_PA_BUFFER);
+    // fill buffers once
+    uint8_t i;
+    for (i=0;i<NUM_OUTPUT_BUFFERS-1;i++){
+        (*playback_callback)(&output_buffer_storage[i*NUM_FRAMES_PER_PA_BUFFER*2], NUM_FRAMES_PER_PA_BUFFER);
+    }
     output_buffer_to_play = 0;
-    output_buffer_to_fill = 2;
+    output_buffer_to_fill = NUM_OUTPUT_BUFFERS-1;
 
     /* -- start stream -- */
     PaError err = Pa_StartStream(stream_sink);
@@ -409,13 +448,12 @@ static void btstack_audio_portaudio_sink_close(void){
     btstack_audio_portaudio_close_pa_if_not_needed();
 }
 
-
 static void btstack_audio_portaudio_source_close(void){
 
     if (!recording_callback) return;
 
     if (source_active){
-        btstack_audio_portaudio_sink_stop_stream();
+        btstack_audio_portaudio_source_stop_stream();
     }
 
     PaError err = Pa_CloseStream(stream_source);
@@ -430,6 +468,7 @@ static void btstack_audio_portaudio_source_close(void){
 
 static const btstack_audio_sink_t btstack_audio_portaudio_sink = {
     /* int (*init)(..);*/                                       &btstack_audio_portaudio_sink_init,
+    /* void (*set_volume)(uint8_t volume); */                   &btstack_audio_portaudio_sink_set_volume,
     /* void (*start_stream(void));*/                            &btstack_audio_portaudio_sink_start_stream,
     /* void (*stop_stream)(void)  */                            &btstack_audio_portaudio_sink_stop_stream,
     /* void (*close)(void); */                                  &btstack_audio_portaudio_sink_close
@@ -437,6 +476,7 @@ static const btstack_audio_sink_t btstack_audio_portaudio_sink = {
 
 static const btstack_audio_source_t btstack_audio_portaudio_source = {
     /* int (*init)(..);*/                                       &btstack_audio_portaudio_source_init,
+    /* void (*set_gain)(uint8_t gain); */                       &btstack_audio_portaudio_source_set_gain,
     /* void (*start_stream(void));*/                            &btstack_audio_portaudio_source_start_stream,
     /* void (*stop_stream)(void)  */                            &btstack_audio_portaudio_source_stop_stream,
     /* void (*close)(void); */                                  &btstack_audio_portaudio_source_close

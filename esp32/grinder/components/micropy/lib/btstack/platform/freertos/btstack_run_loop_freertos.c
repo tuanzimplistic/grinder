@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -62,11 +62,13 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #else
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "event_groups.h"
+#include "semphr.h"
 #endif
 
 typedef struct function_call {
@@ -90,10 +92,12 @@ typedef struct function_call {
 #ifdef USE_STATIC_ALLOC
 static StaticQueue_t btstack_run_loop_queue_object;
 static uint8_t btstack_run_loop_queue_storage[ RUN_LOOP_QUEUE_LENGTH * RUN_LOOP_QUEUE_ITEM_SIZE ];
+static StaticSemaphore_t btstack_run_loop_callback_mutex_object;
 #endif
 
 static QueueHandle_t        btstack_run_loop_queue;
 static TaskHandle_t         btstack_run_loop_task;
+static SemaphoreHandle_t    btstack_run_loop_callbacks_mutex;
 
 #ifndef HAVE_FREERTOS_TASK_NOTIFICATIONS
 static EventGroupHandle_t   btstack_run_loop_event_group;
@@ -103,8 +107,7 @@ static EventGroupHandle_t   btstack_run_loop_event_group;
 #define EVENT_GROUP_FLAG_RUN_LOOP 1
 
 // the run loop
-static btstack_linked_list_t timers;
-static btstack_linked_list_t data_sources;
+static bool run_loop_exit_requested;
 
 static uint32_t btstack_run_loop_freertos_get_time_ms(void){
     return hal_time_ms();
@@ -115,46 +118,7 @@ static void btstack_run_loop_freertos_set_timer(btstack_timer_source_t *ts, uint
     ts->timeout = btstack_run_loop_freertos_get_time_ms() + timeout_in_ms + 1;
 }
 
-/**
- * Add timer to run_loop (keep list sorted)
- */
-static void btstack_run_loop_freertos_add_timer(btstack_timer_source_t *ts){
-    btstack_linked_item_t *it;
-    for (it = (btstack_linked_item_t *) &timers; it->next ; it = it->next){
-        // don't add timer that's already in there
-        btstack_timer_source_t * next = (btstack_timer_source_t *) it->next;
-        if (next == ts){
-            log_error( "btstack_run_loop_timer_add error: timer to add already in list!");
-            return;
-        }
-        // exit if new timeout before list timeout
-        int32_t delta = btstack_time_delta(ts->timeout, next->timeout);
-        if (delta < 0) break;
-    }
-    ts->item.next = it->next;
-    it->next = (btstack_linked_item_t *) ts;
-}
-
-/**
- * Remove timer from run loop
- */
-static bool btstack_run_loop_freertos_remove_timer(btstack_timer_source_t *ts){
-    return btstack_linked_list_remove(&timers, (btstack_linked_item_t *) ts);
-}
-
-static void btstack_run_loop_freertos_dump_timer(void){
-#ifdef ENABLE_LOG_INFO 
-    btstack_linked_item_t *it;
-    int i = 0;
-    for (it = (btstack_linked_item_t *) timers; it ; it = it->next){
-        btstack_timer_source_t *ts = (btstack_timer_source_t*) it;
-        log_info("timer %u, timeout %u\n", i, (unsigned int) ts->timeout);
-    }
-#endif
-}
-
-// schedules execution from regular thread
-void btstack_run_loop_freertos_trigger(void){
+static void btstack_run_loop_freertos_trigger_from_thread(void){
 #ifdef HAVE_FREERTOS_TASK_NOTIFICATIONS
     xTaskNotify(btstack_run_loop_task, EVENT_GROUP_FLAG_RUN_LOOP, eSetBits);
 #else
@@ -162,26 +126,8 @@ void btstack_run_loop_freertos_trigger(void){
 #endif
 }
 
-void btstack_run_loop_freertos_execute_code_on_main_thread(void (*fn)(void *arg), void * arg){
-
-    // directly call function if already on btstack task
-    if (xTaskGetCurrentTaskHandle() == btstack_run_loop_task){
-        (*fn)(arg);
-        return;
-    }
-
-    function_call_t message;
-    message.fn  = fn;
-    message.arg = arg;
-    BaseType_t res = xQueueSendToBack(btstack_run_loop_queue, &message, 0); // portMAX_DELAY);
-    if (res != pdTRUE){
-        log_error("Failed to post fn %p", fn);
-    }
-    btstack_run_loop_freertos_trigger();
-}
-
 #if defined(HAVE_FREERTOS_TASK_NOTIFICATIONS) || (INCLUDE_xEventGroupSetBitFromISR == 1)
-void btstack_run_loop_freertos_trigger_from_isr(void){
+static void btstack_run_loop_freertos_poll_data_sources_from_irq(void){
     BaseType_t xHigherPriorityTaskWoken;
 #ifdef HAVE_FREERTOS_TASK_NOTIFICATIONS
     xTaskNotifyFromISR(btstack_run_loop_task, EVENT_GROUP_FLAG_RUN_LOOP, eSetBits, &xHigherPriorityTaskWoken);
@@ -196,16 +142,11 @@ void btstack_run_loop_freertos_trigger_from_isr(void){
     xEventGroupSetBitsFromISR(btstack_run_loop_event_group, EVENT_GROUP_FLAG_RUN_LOOP, &xHigherPriorityTaskWoken);
 #endif
 }
-
-void btstack_run_loop_freertos_execute_code_on_main_thread_from_isr(void (*fn)(void *arg), void * arg){
-    function_call_t message;
-    message.fn  = fn;
-    message.arg = arg;
-    BaseType_t xHigherPriorityTaskWoken;
-    xQueueSendToBackFromISR(btstack_run_loop_queue, &message, &xHigherPriorityTaskWoken);
-    btstack_run_loop_freertos_trigger_from_isr();
-}
 #endif
+
+static void btstack_run_loop_freertos_trigger_exit_internal(void){
+    run_loop_exit_requested = true;
+}
 
 /**
  * Execute run_loop
@@ -213,19 +154,25 @@ void btstack_run_loop_freertos_execute_code_on_main_thread_from_isr(void (*fn)(v
 static void btstack_run_loop_freertos_execute(void) {
     log_debug("RL: execute");
     
+    run_loop_exit_requested = false;
+
     while (true) {
 
         // process data sources
-        btstack_data_source_t *ds;
-        btstack_data_source_t *next;
-        for (ds = (btstack_data_source_t *) data_sources; ds != NULL ; ds = next){
-            next = (btstack_data_source_t *) ds->item.next; // cache pointer to next data_source to allow data source to remove itself
-            if (ds->flags & DATA_SOURCE_CALLBACK_POLL){
-                ds->process(ds, DATA_SOURCE_CALLBACK_POLL);
+        btstack_run_loop_base_poll_data_sources();
+
+        // execute callbacks - protect list with mutex
+        while (1){
+            xSemaphoreTake(btstack_run_loop_callbacks_mutex, portMAX_DELAY);
+            btstack_context_callback_registration_t * callback_registration = (btstack_context_callback_registration_t *) btstack_linked_list_pop(&btstack_run_loop_base_callbacks);
+            xSemaphoreGive(btstack_run_loop_callbacks_mutex);
+            if (callback_registration == NULL){
+                break;
             }
+            (*callback_registration->callback)(callback_registration->context);
         }
 
-        // process registered function calls on run loop thread
+        // process registered function calls on run loop thread (deprecated)
         while (true){
             function_call_t message = { NULL, NULL };
             BaseType_t res = xQueueReceive( btstack_run_loop_queue, &message, 0);
@@ -235,25 +182,21 @@ static void btstack_run_loop_freertos_execute(void) {
             }
         }
 
-        // process timers and get next timeout
-        uint32_t timeout_ms = portMAX_DELAY;
-        log_debug("RL: portMAX_DELAY %u", portMAX_DELAY);
-        while (timers) {
-            btstack_timer_source_t * ts = (btstack_timer_source_t *) timers;
-            uint32_t now = btstack_run_loop_freertos_get_time_ms();
-            int32_t delta_ms = btstack_time_delta(ts->timeout, now);
-            log_debug("RL: now %u, expires %u -> delta %d", now, ts->timeout, delta_ms);
-            if (delta_ms > 0){
-                timeout_ms = delta_ms;
-                break;
-            }
-            // remove timer before processing it to allow handler to re-register with run loop
-            btstack_run_loop_freertos_remove_timer(ts);
-            log_debug("RL: first timer %p", ts->process);
-            ts->process(ts);
-        }
+        // process timers
+        uint32_t now = btstack_run_loop_freertos_get_time_ms();
+        btstack_run_loop_base_process_timers(now);
+
+        // exit triggered by btstack_run_loop_trigger_exit (main thread or other thread)
+        if (run_loop_exit_requested) break;
 
         // wait for timeout or event group/task notification
+        int32_t timeout_next_timer_ms = btstack_run_loop_base_get_time_until_timeout(now);
+
+        uint32_t timeout_ms = portMAX_DELAY;
+        if (timeout_next_timer_ms >= 0){
+            timeout_ms = (uint32_t) timeout_next_timer_ms;
+        }
+
         log_debug("RL: wait with timeout %u", (int) timeout_ms);
 #ifdef HAVE_FREERTOS_TASK_NOTIFICATIONS
         xTaskNotifyWait(pdFALSE, 0xffffffff, NULL, pdMS_TO_TICKS(timeout_ms));
@@ -263,29 +206,23 @@ static void btstack_run_loop_freertos_execute(void) {
     }
 }
 
-static void btstack_run_loop_freertos_add_data_source(btstack_data_source_t *ds){
-    btstack_linked_list_add(&data_sources, (btstack_linked_item_t *) ds);
-}
-
-static bool btstack_run_loop_freertos_remove_data_source(btstack_data_source_t *ds){
-    return btstack_linked_list_remove(&data_sources, (btstack_linked_item_t *) ds);
-}
-
-static void btstack_run_loop_freertos_enable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags |= callback_types;
-}
-
-static void btstack_run_loop_freertos_disable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags &= ~callback_types;
+static void btstack_run_loop_freertos_execute_on_main_thread(btstack_context_callback_registration_t * callback_registration){
+    // protect list with mutex
+    xSemaphoreTake(btstack_run_loop_callbacks_mutex, portMAX_DELAY);
+    btstack_run_loop_base_add_callback(callback_registration);
+    xSemaphoreGive(btstack_run_loop_callbacks_mutex);
+    btstack_run_loop_freertos_trigger_from_thread();
 }
 
 static void btstack_run_loop_freertos_init(void){
-    timers = NULL;
+    btstack_run_loop_base_init();
 
 #ifdef USE_STATIC_ALLOC
     btstack_run_loop_queue = xQueueCreateStatic(RUN_LOOP_QUEUE_LENGTH, RUN_LOOP_QUEUE_ITEM_SIZE, btstack_run_loop_queue_storage, &btstack_run_loop_queue_object);
+    btstack_run_loop_callbacks_mutex = xSemaphoreCreateMutexStatic(&btstack_run_loop_callback_mutex_object);
 #else
     btstack_run_loop_queue = xQueueCreate(RUN_LOOP_QUEUE_LENGTH, RUN_LOOP_QUEUE_ITEM_SIZE);
+    btstack_run_loop_callbacks_mutex = xSemaphoreCreateMutex();
 #endif
 
 #ifndef HAVE_FREERTOS_TASK_NOTIFICATIONS
@@ -305,18 +242,60 @@ static void btstack_run_loop_freertos_init(void){
 
 static const btstack_run_loop_t btstack_run_loop_freertos = {
     &btstack_run_loop_freertos_init,
-    &btstack_run_loop_freertos_add_data_source,
-    &btstack_run_loop_freertos_remove_data_source,
-    &btstack_run_loop_freertos_enable_data_source_callbacks,
-    &btstack_run_loop_freertos_disable_data_source_callbacks,
+    &btstack_run_loop_base_add_data_source,
+    &btstack_run_loop_base_remove_data_source,
+    &btstack_run_loop_base_enable_data_source_callbacks,
+    &btstack_run_loop_base_disable_data_source_callbacks,
     &btstack_run_loop_freertos_set_timer,
-    &btstack_run_loop_freertos_add_timer,
-    &btstack_run_loop_freertos_remove_timer,
+    &btstack_run_loop_base_add_timer,
+    &btstack_run_loop_base_remove_timer,
     &btstack_run_loop_freertos_execute,
-    &btstack_run_loop_freertos_dump_timer,
+    &btstack_run_loop_base_dump_timer,
     &btstack_run_loop_freertos_get_time_ms,
+#if defined(HAVE_FREERTOS_TASK_NOTIFICATIONS) || (INCLUDE_xEventGroupSetBitFromISR == 1)
+    &btstack_run_loop_freertos_poll_data_sources_from_irq,
+#else
+    NULL,
+#endif
+    btstack_run_loop_freertos_execute_on_main_thread,
+    &btstack_run_loop_freertos_trigger_exit_internal,
 };
 
 const btstack_run_loop_t * btstack_run_loop_freertos_get_instance(void){
     return &btstack_run_loop_freertos;
 }
+
+
+// @deprecated functions
+
+// schedules execution from regular thread
+void btstack_run_loop_freertos_trigger(void){
+    btstack_run_loop_freertos_trigger_from_thread();
+}
+
+void btstack_run_loop_freertos_execute_code_on_main_thread(void (*fn)(void *arg), void * arg){
+    // directly call function if already on btstack task
+    if (xTaskGetCurrentTaskHandle() == btstack_run_loop_task){
+        (*fn)(arg);
+        return;
+    }
+
+    function_call_t message;
+    message.fn  = fn;
+    message.arg = arg;
+    BaseType_t res = xQueueSendToBack(btstack_run_loop_queue, &message, 0); // portMAX_DELAY);
+    if (res != pdTRUE){
+        log_error("Failed to post fn %p", fn);
+    }
+    btstack_run_loop_freertos_trigger();
+}
+
+void btstack_run_loop_freertos_trigger_exit(void){
+    btstack_run_loop_freertos_trigger_exit_internal();
+}
+
+#if defined(HAVE_FREERTOS_TASK_NOTIFICATIONS) || (INCLUDE_xEventGroupSetBitFromISR == 1)
+void btstack_run_loop_freertos_trigger_from_isr(void){
+    btstack_run_loop_freertos_poll_data_sources_from_irq();
+}
+#endif

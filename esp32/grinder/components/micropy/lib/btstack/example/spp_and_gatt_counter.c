@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "spp_and_gatt_counter.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(spp_and_le_counter): Dual mode example
+/* EXAMPLE_START(spp_and_le_counter): Dual Mode - SPP and LE Counter
  * 
  * @text The SPP and LE Counter example combines the Bluetooth Classic SPP Counter
  * and the Bluetooth LE Counter into a single application.
@@ -84,16 +84,12 @@ static uint8_t gatt_service_buffer[70];
 /*
  * @section Advertisements 
  *
- * @text The Flags attribute in the Advertisement Data indicates if a device is in dual-mode or not.
- * Flag 0x06 indicates LE General Discoverable, BR/EDR not supported although we're actually using BR/EDR.
- * In the past, there have been problems with Anrdoid devices when the flag was not set.
- * Setting it should prevent the remote implementation to try to use GATT over LE/EDR, which is not 
- * implemented by BTstack. So, setting the flag seems like the safer choice (while it's technically incorrect).
+ * @text The Flags attribute in the Advertisement Data indicates if a device is dual-mode or le-only.
  */
-/* LISTING_START(advertisements): Advertisement data: Flag 0x06 indicates LE-only device */
+/* LISTING_START(advertisements): Advertisement data: Flag 0x02 indicates dual-mode device */
 const uint8_t adv_data[] = {
-    // Flags general discoverable, BR/EDR not supported
-    0x02, BLUETOOTH_DATA_TYPE_FLAGS, 0x06, 
+    // Flags general discoverable
+    0x02, BLUETOOTH_DATA_TYPE_FLAGS, 0x02,
     // Name
     0x0b, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'L', 'E', ' ', 'C', 'o', 'u', 'n', 't', 'e', 'r', 
     // Incomplete List of 16-bit Service Class UUIDs -- FF10 - only valid for testing!
@@ -224,7 +220,7 @@ static int att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, 
 
 static void beat(void){
     counter++;
-    counter_string_len = sprintf(counter_string, "BTstack counter %04u", counter);
+    counter_string_len = snprintf(counter_string, sizeof(counter_string), "BTstack counter %04u", counter);
     puts(counter_string);
 }
 
@@ -288,9 +284,6 @@ int btstack_main(void)
     gap_set_local_name("SPP and LE Counter 00:00:00:00:00:00");
     gap_ssp_set_io_capability(SSP_IO_CAPABILITY_DISPLAY_YES_NO);
     gap_discoverable_control(1);
-
-    // setup le device db
-    le_device_db_init();
 
     // setup SM: Display only
     sm_init();

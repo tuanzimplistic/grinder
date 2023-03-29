@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,12 +35,14 @@
  *
  */
 
+#ifndef WAV_UIL_H
+#define WAV_UIL_H
+
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
+
+#if defined __cplusplus
+extern "C" {
+#endif
 
 // return 0 if ok
 
@@ -72,10 +74,21 @@ int wav_writer_close(void);
 
 
 /**
- * Open singleton war reader
+ * Open singleton wav reader
  * @return 0 if ok
  */
 int wav_reader_open(const char * filepath);
+
+/**
+ * Get number of channels
+ */
+uint8_t wav_reader_get_num_channels(void);
+
+/**
+ * Get sampling rate
+ */
+uint32_t wav_reader_get_sampling_rate(void);
+
 /**
  * Read Int8 samples
  * @return 0 if ok
@@ -92,3 +105,8 @@ int wav_reader_read_int16(int num_samples, int16_t * data);
  */
 int wav_reader_close(void);
 
+#if defined __cplusplus
+}
+#endif
+
+#endif // WAV_UTIL_H

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,14 +35,11 @@
  *
  */
 
-/*
- *  btstack_util.h
+/**
+ * @title General Utility Functions
  *
- *  General utility functions
- *
- *  Created by Matthias Ringwald on 7/23/09.
  */
-
+ 
 #ifndef BTSTACK_UTIL_H
 #define BTSTACK_UTIL_H
 
@@ -91,10 +88,16 @@ uint32_t btstack_min(uint32_t a, uint32_t b);
 uint32_t btstack_max(uint32_t a, uint32_t b);
 
 /**
- * @brief Calculate delta between two points in time
- * @returns time_a - time_b - result > 0 if time_a is newer than time_b
+ * @brief Calculate delta between two uint32_t points in time
+ * @return time_a - time_b - result > 0 if time_a is newer than time_b
  */
 int32_t btstack_time_delta(uint32_t time_a, uint32_t time_b);
+
+/**
+ * @brief Calculate delta between two uint16_t points in time
+ * @return time_a - time_b - result > 0 if time_a is newer than time_b
+ */
+int16_t btstack_time16_delta(uint16_t time_a, uint16_t time_b);
 
 /** 
  * @brief Read 16/24/32 bit little endian value from buffer
@@ -112,9 +115,9 @@ uint32_t little_endian_read_32(const uint8_t * buffer, int position);
  * @param position in buffer
  * @param value
  */
-void little_endian_store_16(uint8_t *buffer, uint16_t position, uint16_t value);
-void little_endian_store_24(uint8_t *buffer, uint16_t position, uint32_t value);
-void little_endian_store_32(uint8_t *buffer, uint16_t position, uint32_t value);
+void little_endian_store_16(uint8_t * buffer, uint16_t position, uint16_t value);
+void little_endian_store_24(uint8_t * buffer, uint16_t position, uint32_t value);
+void little_endian_store_32(uint8_t * buffer, uint16_t position, uint32_t value);
 
 /** 
  * @brief Read 16/24/32 bit big endian value from buffer
@@ -122,9 +125,9 @@ void little_endian_store_32(uint8_t *buffer, uint16_t position, uint32_t value);
  * @param position in buffer
  * @return value
  */
-uint32_t big_endian_read_16( const uint8_t * buffer, int pos);
-uint32_t big_endian_read_24( const uint8_t * buffer, int pos);
-uint32_t big_endian_read_32( const uint8_t * buffer, int pos);
+uint32_t big_endian_read_16(const uint8_t * buffer, int position);
+uint32_t big_endian_read_24(const uint8_t * buffer, int position);
+uint32_t big_endian_read_32(const uint8_t * buffer, int position);
 
 /** 
  * @brief Write 16/32 bit big endian value into buffer
@@ -132,34 +135,34 @@ uint32_t big_endian_read_32( const uint8_t * buffer, int pos);
  * @param position in buffer
  * @param value
  */
-void big_endian_store_16(uint8_t *buffer, uint16_t pos, uint16_t value);
-void big_endian_store_24(uint8_t *buffer, uint16_t pos, uint32_t value);
-void big_endian_store_32(uint8_t *buffer, uint16_t pos, uint32_t value);
+void big_endian_store_16(uint8_t * buffer, uint16_t position, uint16_t value);
+void big_endian_store_24(uint8_t * buffer, uint16_t position, uint32_t value);
+void big_endian_store_32(uint8_t * buffer, uint16_t position, uint32_t value);
 
 
 /**
  * @brief Swap bytes in 16 bit integer
  */
 static inline uint16_t btstack_flip_16(uint16_t value){
-    return (uint16_t)((value & 0xff) << 8) | (value >> 8);
+    return (uint16_t)((value & 0xffu) << 8) | (value >> 8);
 }
 
 /** 
  * @brief Check for big endian system
- * @returns 1 if on big endian
+ * @return 1 if on big endian
  */
 static inline int btstack_is_big_endian(void){
 	uint16_t sample = 0x0100;
-	return *(uint8_t*) &sample;
+	return (int) *(uint8_t*) &sample;
 }
 
 /** 
  * @brief Check for little endian system
- * @returns 1 if on little endian
+ * @return 1 if on little endian
  */
 static inline int btstack_is_little_endian(void){
 	uint16_t sample = 0x0001;
-	return *(uint8_t*) &sample;
+	return (int) *(uint8_t*) &sample;
 }
 
 /**
@@ -168,19 +171,19 @@ static inline int btstack_is_little_endian(void){
  * @param dest
  * @param len
  */
-void reverse_bytes  (const uint8_t *src, uint8_t * dest, int len);
+void reverse_bytes(const uint8_t * src, uint8_t * dest, int len);
 
 /**
  * @brief Wrapper around reverse_bytes for common buffer sizes
  * @param src
  * @param dest
  */
-void reverse_24 (const uint8_t *src, uint8_t * dest);
-void reverse_48 (const uint8_t *src, uint8_t * dest);
-void reverse_56 (const uint8_t *src, uint8_t * dest);
-void reverse_64 (const uint8_t *src, uint8_t * dest);
-void reverse_128(const uint8_t *src, uint8_t * dest);
-void reverse_256(const uint8_t *src, uint8_t * dest);
+void reverse_24 (const uint8_t * src, uint8_t * dest);
+void reverse_48 (const uint8_t * src, uint8_t * dest);
+void reverse_56 (const uint8_t * src, uint8_t * dest);
+void reverse_64 (const uint8_t * src, uint8_t * dest);
+void reverse_128(const uint8_t * src, uint8_t * dest);
+void reverse_256(const uint8_t * src, uint8_t * dest);
 
 void reverse_bd_addr(const bd_addr_t src, bd_addr_t dest);
 
@@ -214,7 +217,7 @@ void bd_addr_copy(bd_addr_t dest, const bd_addr_t src);
 /**
  * @brief Use printf to write hexdump as single line of data
  */
-void printf_hexdump(const void *data, int size);
+void printf_hexdump(const void * data, int size);
 
 /**
  * @brief Create human readable representation for UUID128
@@ -226,9 +229,25 @@ char * uuid128_to_str(const uint8_t * uuid);
 /**
  * @brief Create human readable represenationt of Bluetooth address
  * @note uses fixed global buffer
+ * @param delimiter
+ * @return pointer to Bluetooth address string
+ */
+char * bd_addr_to_str_with_delimiter(const bd_addr_t addr, char delimiter);
+
+/**
+ * @brief Create human readable represenationt of Bluetooth address
+ * @note uses fixed global buffer
  * @return pointer to Bluetooth address string
  */
 char * bd_addr_to_str(const bd_addr_t addr);
+
+/**
+ * @brief Replace address placeholder '00:00:00:00:00:00' with Bluetooth address
+ * @param buffer
+ * @param size
+ * @param address
+ */
+void btstack_replace_bd_addr_placeholder(uint8_t * buffer, uint16_t size, const bd_addr_t address);
 
 /** 
  * @brief Parse Bluetooth address
@@ -257,7 +276,7 @@ int  uuid_has_bluetooth_prefix(const uint8_t * uuid128);
  * @param str to parse
  * @return value
  */
-uint32_t btstack_atoi(const char *str);
+uint32_t btstack_atoi(const char * str);
 
 /**
  * @brief Return number of digits of a uint32 number
@@ -274,11 +293,56 @@ int string_len_for_uint32(uint32_t i);
 int count_set_bits_uint32(uint32_t x);
 
 /**
- * CRC8 functions using ETSI TS 101 369 V6.3.0.
- * Only used by RFCOMM
+ * @brief Check CRC8 using ETSI TS 101 369 V6.3.0.
+ * @note Only used by RFCOMM
+ * @param data
+ * @param len
+ * @param check_sum
  */
-uint8_t btstack_crc8_check(uint8_t *data, uint16_t len, uint8_t check_sum);
-uint8_t btstack_crc8_calc(uint8_t *data, uint16_t len);
+uint8_t btstack_crc8_check(uint8_t * data, uint16_t len, uint8_t check_sum);
+
+/**
+ * @brief Calculate CRC8 using ETSI TS 101 369 V6.3.0. 
+ * @note Only used by RFCOMM
+ * @param data
+ * @param len
+ */
+uint8_t btstack_crc8_calc(uint8_t * data, uint16_t len);
+
+/**
+ * @brief Get next cid
+ * @param current_cid
+ * @return next cid skiping 0
+ */
+uint16_t btstack_next_cid_ignoring_zero(uint16_t current_cid);
+
+/**
+ * @brief Copy string (up to dst_size-1 characters) from src into dst buffer with terminating '\0'
+ * @note replaces strncpy + dst[dst_size-1] = '\0'
+ * @param dst
+ * @param dst_size
+ * @param src
+ */
+void btstack_strcpy(char * dst, uint16_t dst_size, const char * src);
+
+/**
+ * @brief Append src string to string in dst buffer with terminating '\0'
+ * @note max total string length will be dst_size-1 characters
+ * @param dst
+ * @param dst_size
+ * @param src
+ */
+void btstack_strcat(char * dst, uint16_t dst_size, const char * src);
+
+/**
+ * Returns the number of leading 0-bits in x, starting at the most significant bit position.
+ * If x is 0, the result is undefined.
+ * @note maps to __builtin_clz for gcc and clang
+ * @param value
+ * @return number of leading 0-bits
+ */
+uint8_t btstack_clz(uint32_t value);
+
 
 /* API_END */
 

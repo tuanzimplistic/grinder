@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -42,8 +42,8 @@
  */
 
 #include "btstack_base64_decoder.h"
+#include "btstack_debug.h"
 #include <string.h>
-#include <stdio.h>
 
 /**
  * @brief Initialize base99 decoder
@@ -56,7 +56,7 @@ void btstack_base64_decoder_init(btstack_base64_decoder_t * context){
 /**
  * @brief Decode single byte
  * @param context
- * @returns value, or BTSTACK_BASE64_DECODER_COMPLETE, BTSTACK_BASE64_DECODER_INVALID
+ * @return value, or BTSTACK_BASE64_DECODER_COMPLETE, BTSTACK_BASE64_DECODER_INVALID
  */
 int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uint8_t c){
 
@@ -82,7 +82,7 @@ int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uin
 
     // handle '='
     if (c == '='){
-        if ((context->pos == 2) || (context->pos == 3)){
+        if ((context->pos == 2u) || (context->pos == 3u)){
             context->pos++;
             return BTSTACK_BASE64_DECODER_MORE;
         }
@@ -92,7 +92,7 @@ int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uin
     uint8_t value = table[c];
 
     // invalid character
-    if (value == 99) {
+    if (value == 99u) {
         context->pos = 99;
     }
 
@@ -120,6 +120,9 @@ int  btstack_base64_decoder_process_byte(btstack_base64_decoder_t * context, uin
         case 99:
             result = BTSTACK_BASE64_DECODER_INVALID;
             break;
+		default:
+			btstack_assert(false);
+			break;
     }
     return result;
 }

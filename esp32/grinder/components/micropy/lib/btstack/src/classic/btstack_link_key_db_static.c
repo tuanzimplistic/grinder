@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -47,10 +47,12 @@
 
 #include "classic/btstack_link_key_db.h"
 
-#include "stdint.h"
-#include "string.h"
 #include "btstack_debug.h"
 #include "btstack_util.h"
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 typedef struct {
 	const char * bd_addr;
@@ -78,25 +80,13 @@ static char *link_key_to_str(link_key_t link_key){
 }
 
 static int sscanf_link_key(const char * link_key_string, link_key_t link_key){
-    unsigned int buffer[LINK_KEY_LEN];
-
-    // reset result buffer
-    memset(&buffer, 0, sizeof(buffer));
-
-    // parse
-    int result = sscanf( (char *) link_key_string, "%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x",
-                                    &buffer[0], &buffer[1], &buffer[2], &buffer[3],
-                                    &buffer[4], &buffer[5], &buffer[6], &buffer[7],
-                                    &buffer[8], &buffer[9], &buffer[10], &buffer[11],
-                                    &buffer[12], &buffer[13], &buffer[14], &buffer[15] );
-
-    if (result != LINK_KEY_LEN) return 0;
-
-    // store
-    int i;
-    uint8_t *p = (uint8_t *) link_key;
-    for (i=0; i<LINK_KEY_LEN; i++ ) {
-        *p++ = (uint8_t) buffer[i];
+    uint16_t pos;
+    for (pos = 0 ; pos < LINK_KEY_LEN; pos++){
+        int high = nibble_for_char(*link_key_string++);
+        if (high < 0) return 0;
+        int low = nibble_for_char(*link_key_string++);
+        if (low < 0) return 0;
+        link_key[pos] = (((uint8_t) high) << 4) | ((uint8_t) low);
     }
     return 1;
 }

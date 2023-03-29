@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,9 +35,7 @@
  *
  */
 
-/*
- * avdtp_int.h
- * 
+/**
  * Audio/Video Distribution Transport Protocol - Initiator Role
  *
  */
@@ -52,8 +50,9 @@
 extern "C" {
 #endif
 
-void avdtp_initiator_stream_config_subsm(avdtp_connection_t * connection, uint8_t *packet, uint16_t size, int offset, avdtp_context_t * context);
-void avdtp_initiator_stream_config_subsm_run(avdtp_connection_t * connection, avdtp_context_t * context);
+void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t *packet, uint16_t size, int offset);
+void avdtp_initiator_stream_config_subsm_handle_can_send_now_signaling(avdtp_connection_t *connection);
+void avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint(avdtp_stream_endpoint_t *stream_endpoint);
 
 #if defined __cplusplus
 }

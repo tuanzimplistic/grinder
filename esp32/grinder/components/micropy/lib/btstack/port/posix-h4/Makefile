@@ -2,7 +2,6 @@
 BTSTACK_ROOT ?= ../..
 
 CORE += \
-	bluetooth_init_cc2564B_1.8_BT_Spec_4.1.c \
 	btstack_chipset_bcm.c \
 	btstack_chipset_cc256x.c \
 	btstack_chipset_csr.c \
@@ -11,17 +10,22 @@ CORE += \
 	btstack_chipset_tc3566x.c \
 	btstack_link_key_db_tlv.c \
 	btstack_run_loop_posix.c \
+	btstack_audio.c \
+    btstack_audio_portaudio.c \
 	btstack_tlv_posix.c \
-	btstack_uart_block_posix.c \
+	btstack_uart_posix.c \
+	hci_dump_posix_fs.c \
 	hci_transport_h4.c \
 	le_device_db_tlv.c \
 	rijndael.c \
 	main.c \
 	btstack_stdin_posix.c \
+	btstack_signal.c \
 	wav_util.c 					\
 	0000000_META_hci_patches_v7.c \
+	bluetooth_init_cc2564C_1.5.c \
+	# bluetooth_init_cc2564B_1.8_BT_Spec_4.1.c \
 	# bluetooth_init_cc2564_2.14.c \
-	# bluetooth_init_cc2564C_1.3.c \
 
 # TI-WL183x requires TIInit_11.8.32.c
 
@@ -57,6 +61,9 @@ VPATH += ${BTSTACK_ROOT}/chipset/csr
 VPATH += ${BTSTACK_ROOT}/chipset/em9301
 VPATH += ${BTSTACK_ROOT}/chipset/stlc2500d
 VPATH += ${BTSTACK_ROOT}/chipset/tc3566x
+
+# add pthread for ctrl-c signal handler
+LDFLAGS += -lpthread
 
 EXAMPLES = ${EXAMPLES_GENERAL} ${EXAMPLES_CLASSIC_ONLY} ${EXAMPLES_LE_ONLY} ${EXAMPLES_DUAL_MODE}
 EXAMPLES += pan_lwip_http_server

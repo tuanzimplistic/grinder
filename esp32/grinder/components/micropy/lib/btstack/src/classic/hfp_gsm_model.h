@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,12 +35,10 @@
  *
  */
 
-// *****************************************************************************
-//
-//  GSM model 
-//
-// *****************************************************************************
-
+/**
+ * @title HFP GSM Model
+ *
+ */
 
 #ifndef BTSTACK_HFP_GSM_MODEL_H
 #define BTSTACK_HFP_GSM_MODEL_H
@@ -55,7 +53,7 @@ extern "C" {
 
 /* API_START */
 typedef struct {
-    uint8_t used_slot;
+    bool used_slot;
     hfp_enhanced_call_status_t enhanced_status;
     hfp_enhanced_call_dir_t direction;
     hfp_enhanced_call_mode_t mode;
@@ -73,7 +71,7 @@ hfp_callsetup_status_t hfp_gsm_callsetup_status(void);
 int hfp_gsm_get_number_of_calls(void);
 char * hfp_gsm_last_dialed_number(void);
 void hfp_gsm_clear_last_dialed_number(void);
-
+void hfp_gsm_set_last_dialed_number(const char* number);
 
 hfp_gsm_call_t * hfp_gsm_call(int index);
 
@@ -83,11 +81,10 @@ uint8_t hfp_gsm_clip_type(void);
 char *  hfp_gsm_clip_number(void);
 
 void hfp_gsm_init(void);
+void hfp_gsm_deinit(void);
 
-void hfp_gsm_handle_event_with_clip(hfp_ag_call_event_t event, uint8_t type, const char * number);
-void hfp_gsm_handle_event_with_call_index(hfp_ag_call_event_t event, uint8_t index);
-void hfp_gsm_handle_event_with_call_number(hfp_ag_call_event_t event, const char * number);
-void hfp_gsm_handle_event(hfp_ag_call_event_t event);
+void hfp_gsm_handler(hfp_ag_call_event_t event, uint8_t index, uint8_t type, const char * number);
+
 
 /* API_END */
 

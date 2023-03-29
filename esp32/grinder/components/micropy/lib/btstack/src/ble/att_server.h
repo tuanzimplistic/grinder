@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title ATT Server
+ *
+ */
+
 #ifndef ATT_SERVER_H
 #define ATT_SERVER_H
 
@@ -77,7 +83,7 @@ void att_server_register_service_handler(att_service_handler_t * handler);
  * @param con_handle
  * @return 0 if ok, error otherwise
  */
-int att_server_register_can_send_now_callback(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
+uint8_t att_server_register_can_send_now_callback(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
 
 /**
  * @brief Return ATT MTU
@@ -93,7 +99,7 @@ uint16_t att_server_get_mtu(hci_con_handle_t con_handle);
  * @param con_handle
  * @return ERROR_CODE_SUCCESS if ok, ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER if handle unknown, and ERROR_CODE_COMMAND_DISALLOWED if callback already registered
  */
-int att_server_request_to_send_notification(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
+uint8_t att_server_request_to_send_notification(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
 
 /**
  * @brief Request callback when sending indication is possible
@@ -102,7 +108,7 @@ int att_server_request_to_send_notification(btstack_context_callback_registratio
  * @param con_handle
  * @return ERROR_CODE_SUCCESS if ok, ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER if handle unknown, and ERROR_CODE_COMMAND_DISALLOWED if callback already registered
  */
-int att_server_request_to_send_indication(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
+uint8_t att_server_request_to_send_indication(btstack_context_callback_registration_t * callback_registration, hci_con_handle_t con_handle);
 
 /*
  * @brief notify client about attribute value change
@@ -112,7 +118,7 @@ int att_server_request_to_send_indication(btstack_context_callback_registration_
  * @param value_len
  * @return 0 if ok, error otherwise
  */
-int att_server_notify(hci_con_handle_t con_handle, uint16_t attribute_handle, const uint8_t *value, uint16_t value_len);
+uint8_t att_server_notify(hci_con_handle_t con_handle, uint16_t attribute_handle, const uint8_t *value, uint16_t value_len);
 
 /*
  * @brief indicate value change to client. client is supposed to reply with an indication_response
@@ -122,7 +128,7 @@ int att_server_notify(hci_con_handle_t con_handle, uint16_t attribute_handle, co
  * @param value_len
  * @return 0 if ok, error otherwise
  */
-int att_server_indicate(hci_con_handle_t con_handle, uint16_t attribute_handle, const uint8_t *value, uint16_t value_len);
+uint8_t att_server_indicate(hci_con_handle_t con_handle, uint16_t attribute_handle, const uint8_t *value, uint16_t value_len);
 
 #ifdef ENABLE_ATT_DELAYED_RESPONSE
 /*
@@ -132,7 +138,7 @@ int att_server_indicate(hci_con_handle_t con_handle, uint16_t attribute_handle, 
  * @param con_handle
  * @return 0 if ok, error otherwise
  */
-int att_server_response_ready(hci_con_handle_t con_handle);
+uint8_t att_server_response_ready(hci_con_handle_t con_handle);
 #endif
 
 // the following functions will be removed soon

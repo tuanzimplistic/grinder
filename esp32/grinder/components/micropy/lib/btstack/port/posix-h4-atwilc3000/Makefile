@@ -3,17 +3,19 @@ BTSTACK_ROOT ?= ../..
 
 CORE += \
 	btstack_chipset_atwilc3000.c \
-	btstack_link_key_db_tlv.c \
 	btstack_run_loop_posix.c \
 	btstack_tlv_posix.c \
-	btstack_uart_block_posix.c \
+	btstack_uart_posix.c \
+	hci_dump_posix_fs.c \
 	hci_transport_h4.c \
 	le_device_db_tlv.c \
 	main.c \
 	wav_util.c 					\
 	btstack_stdin_posix.c \
+	btstack_signal.c \
 
 # examples
+CLASSIC =
 include ${BTSTACK_ROOT}/example/Makefile.inc
 
 # firmware
@@ -29,6 +31,9 @@ CFLAGS  += -g -Wall -Werror \
 
 VPATH += ${BTSTACK_ROOT}/platform/posix
 VPATH += ${BTSTACK_ROOT}/chipset/atwilc3000
+
+# add pthread for ctrl-c signal handler
+LDFLAGS += -lpthread
 
 EXAMPLES = ${EXAMPLES_GENERAL} ${EXAMPLES_LE_ONLY}
 

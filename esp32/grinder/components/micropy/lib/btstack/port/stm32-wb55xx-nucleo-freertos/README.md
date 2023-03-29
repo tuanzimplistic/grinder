@@ -1,4 +1,4 @@
-# BTstack port for STM32WB55 Nucleo Boards using FreeRTOS
+# BTstack Port for STM32WB55 Nucleo Boards using FreeRTOS
 
 This port supports the Nucleo68 and the USB dongle of the [P-NUCLEO-WB55 kit](https://www.st.com/en/evaluation-tools/p-nucleo-wb55.html). Both have 1 MB of Flash memory.
 
@@ -8,10 +8,12 @@ For easy development, Ozone project files are generated as well.
 ## Hardware
 
 In this port, the Nucelo68 or the USB Dongle from the P-NUCLEO-WB55 can be used.
-Development was done using FUS v1.0.1 and v1.0.2 and Full BLE Stack v1.3.1.
-See STM32Cube_FW_WB_V1.3.0/Projects/STM32WB_Copro_Wireless_Binaries/Release_Notes.html for update instructions.
 
-Note: Segger RTT currently doesn't work as output stops after CPU2 (radio controller) has started up.
+Last test was done using FUS v1.2 and HCI BLE Firmware v1.13 on Nucleo68
+See STM32Cube_FW_WB_V1.13.0/Projects/STM32WB_Copro_Wireless_Binaries/Release_Notes.html for firmware install instructions.
+
+Note: Segger RTT is currently not really usable. When sleep modes ared disabled for debuggin (see port_thread())
+RTT works, but the output buffer quickly overflows. In Block mode, radio stops working.
 
 ### Nucleo68
 
@@ -74,7 +76,7 @@ All debug output can be either send via SEGGER RTT or via USART1. To get the con
 
 In src/btstack_config.h resp. in example/btstack_config.h of the generated projects, additional debug information can be enabled by uncommenting ENABLE_LOG_INFO.
 
-Also, the full packet log can be enabled in src/btstack_port.c by uncommenting the hci_dump_open(..) line. The console output can then be converted into .pklg files for OS X PacketLogger or WireShark by running tool/create_packet_log.py
+Also, the full packet log can be enabled in src/btstack_port.c by uncommenting the hci_dump_init(..) line. The console output can then be converted into .pklg files for OS X PacketLogger or WireShark by running tool/create_packet_log.py
 
 ## GATT Database
 In BTstack, the GATT Database is defined via the .gatt file in the example folder. During the build, the .gatt file is converted into a .h file with a binary representation of the GATT Database and useful defines for the application.

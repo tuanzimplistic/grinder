@@ -78,6 +78,10 @@
 #error "HCI_INCOMING_PACKET_BUFFER_SIZE to small. Incoming HCI packet buffer to small for largest HCI Event packet. Please set HCI_ACL_PAYLOAD_SIZE to 257 or higher."
 #endif
 
+#if defined(ENABLE_SCO_OVER_HCI) && defined(ENABLE_SCO_OVER_PCM)
+#error "SCO can either be routed over HCI or PCM, please define only one of: ENABLE_SCO_OVER_HCI or ENABLE_SCO_OVER_PCM"
+#endif
+
 #if defined(__GNUC__) && defined(__MSP430X__) && (__MSP430X__ > 0)
 #include "hal_compat.h"
 #endif
@@ -105,66 +109,47 @@ static uint32_t         init_script_size;
 // power in db - set by btstack_chipset_cc256x_set_power
 static int16_t    init_power_in_dB    = 13; // 13 dBm
 
+// explicit power vectors of 16 uint8_t bytes
+static const uint8_t * init_power_vectors[3];
+
 // upload position
 static uint32_t   init_script_offset  = 0;
 
 // support for SCO over HCI
 #ifdef ENABLE_SCO_OVER_HCI
-static int      init_send_route_sco_over_hci = 0;
+static int   init_send_route_sco_over_hci = 0;
 static const uint8_t hci_route_sco_over_hci[] = {
-#if 1
-    // Follow recommendation from https://e2e.ti.com/support/wireless_connectivity/bluetooth_cc256x/f/660/t/397004
-    // route SCO over HCI (connection type=1, tx buffer size = 120, tx buffer max latency= 720, accept packets with CRC Error
-    0x10, 0xfe, 0x05, 0x01, 0x78, 0xd0, 0x02, 0x01,
-#else
-    // Configure SCO via I2S interface - 256 kbps
-    // Send_HCI_VS_Write_CODEC_Config 0xFD06,
-    0x06, 0xfd, 
-    // len
-    34,
-    //3072, - clock rate 3072000 hz
-    0x00, 0x01, 
-    // 0x00 - clock direction: output = master
-    0x00,
-    // 8000, framesync frequency in hz
-    0x40, 0x1f, 0x00, 0x00,
-    // 0x0001, framesync duty cycle
-    0x01, 0x00,
-    // 1, framesync edge
-    1,
-    // 0x00, framesync polarity
-    0x00,
-    // 0x00, RESERVED
-    0x00,
-    // 16, channel 1 out size
-    8, 0,
-    // 0x0001, channel 1 out offset
-    0x01, 0x00,
-    // 1, channel 1 out edge
-    1,
-    // 16,  channel 1 in size
-    8, 0,
-    // 0x0001, channel 1 in offset
-    0x01, 0x00,
-    // 0, channel 1 in edge
-    0,
-    // 0x00,  RESERVED
-    0x00,
-    // 16, channel 2 out size
-    8, 0,
-    // 17, channel 2 out offset
-    9, 0,
-    // 0x01, channel 2 out edge
-    0x01,
-    // 16,  channel 2 in size
-    8, 0,
-    // 17,  channel 2 in offset
-    9, 0,
-    // 0x00, channel 2 in edge
-    0x00,
-    // 0x0001, RESERVED
-    0x00
+        // Follow recommendation from https://e2e.ti.com/support/wireless_connectivity/bluetooth_cc256x/f/660/t/397004
+        // route SCO over HCI (connection type=1, tx buffer size = 120, tx buffer max latency= 720, accept packets with CRC Error
+        0x10, 0xfe, 0x05, 0x01, 0x78, 0xd0, 0x02, 0x01,
+};
 #endif
+#ifdef ENABLE_SCO_OVER_PCM
+static int init_send_sco_i2s_config_cvsd = 0;
+static const uint8_t hci_write_codec_config_cvsd[] = {
+        0x06, 0xFD,              // HCI opcode = HCI_VS_Write_CODEC_Config
+        0x22,                    // HCI param length
+        0x00, 0x01,              // PCM clock rate 256, - clock rate 256000 Hz
+        0x00,                    // PCM clock direction = master
+        0x40, 0x1F, 0x00, 0x00,  // PCM frame sync = 8kHz
+        0x10, 0x00,              // PCM frame sync duty cycle = 16 clk
+        0x01,                    // PCM frame edge = rising edge
+        0x00,                    // PCM frame polarity = active high
+        0x00,                    // Reserved
+        0x10, 0x00,              // PCM channel 1 out size = 16
+        0x01, 0x00,              // PCM channel 1 out offset = 1
+        0x01,                    // PCM channel 1 out edge = rising
+        0x10, 0x00,              // PCM channel 1 in size = 16
+        0x01, 0x00,              // PCM channel 1 in offset = 1
+        0x00,                    // PCM channel 1 in edge = falling
+        0x00,                    // Reserved
+        0x10, 0x00,              // PCM channel 2 out size = 16
+        0x11, 0x00,              // PCM channel 2 out offset = 17
+        0x01,                    // PCM channel 2 out edge = rising
+        0x10, 0x00,              // PCM channel 2 in size = 16
+        0x11, 0x00,              // PCM channel 2 in offset = 17
+        0x00,                    // PCM channel 2 in edge = falling
+        0x00,                    // Reserved
 };
 #endif
 
@@ -186,6 +171,9 @@ static void chipset_init(const void * config){
 #endif
 #ifdef ENABLE_SCO_OVER_HCI
     init_send_route_sco_over_hci = 1;
+#endif
+#ifdef ENABLE_SCO_OVER_PCM
+    init_send_sco_i2s_config_cvsd = 1;
 #endif
 }
 
@@ -242,8 +230,16 @@ static int get_highest_level_for_given_power(int power_db, int recommended_db){
 }
 
 static void update_set_power_vector(uint8_t *hci_cmd_buffer){
-    int i;
-    int modulation_type = hci_cmd_buffer[3];
+    uint8_t modulation_type = hci_cmd_buffer[3];
+    btstack_assert(modulation_type <= 2);
+
+    // explicit power vector provided by user
+    if (init_power_vectors[modulation_type] != NULL){
+        (void)memcpy(&hci_cmd_buffer[4], init_power_vectors[modulation_type], 16);
+        return;
+    }
+
+    unsigned int i;
     int power_db = get_max_power_for_modulation_type(modulation_type);
     int dynamic_range = 0;
 
@@ -319,8 +315,15 @@ static btstack_chipset_result_t chipset_next_command(uint8_t * hci_cmd_buffer){
             return BTSTACK_CHIPSET_VALID_COMMAND;
         }
 #endif
-
-        return BTSTACK_CHIPSET_DONE;
+#ifdef ENABLE_SCO_OVER_PCM
+        // append sco i2s cvsd config
+        if (init_send_sco_i2s_config_cvsd){
+            init_send_sco_i2s_config_cvsd = 0;
+            memcpy(hci_cmd_buffer, hci_write_codec_config_cvsd, sizeof(hci_write_codec_config_cvsd));
+            return BTSTACK_CHIPSET_VALID_COMMAND;
+        }
+#endif
+       return BTSTACK_CHIPSET_DONE;
     }
     
     // extracted init script has 0x01 cmd packet type, but BTstack expects them without
@@ -366,6 +369,11 @@ static btstack_chipset_result_t chipset_next_command(uint8_t * hci_cmd_buffer){
 // MARK: public API
 void btstack_chipset_cc256x_set_power(int16_t power_in_dB){
     init_power_in_dB = power_in_dB;
+}
+
+void btstack_chipset_cc256x_set_power_vector(uint8_t modulation_type, const uint8_t * power_vector){
+    btstack_assert(modulation_type <= 2);
+    init_power_vectors[modulation_type] = power_vector;
 }
 
 void btstack_chipset_cc256x_set_init_script(uint8_t * data, uint32_t size){

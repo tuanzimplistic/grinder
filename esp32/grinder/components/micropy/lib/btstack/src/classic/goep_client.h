@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,6 +35,13 @@
  *
  */
 
+/**
+ * @title GOEP Client 
+ *
+ * Communicate with remote OBEX server - General Object Exchange
+ *
+ */
+
 #ifndef GOEP_CLIENT_H
 #define GOEP_CLIENT_H
 
@@ -42,18 +49,10 @@
 extern "C" {
 #endif
  
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "btstack_defines.h"
-
-//------------------------------------------------------------------------------------------------------------
-// goep_client.h
-//
-// Communicate with remote OBEX server - General Object Exchange
-//
 
 /* API_START */
 
@@ -98,9 +97,15 @@ void goep_client_request_can_send_now(uint16_t goep_cid);
 uint8_t goep_client_get_request_opcode(uint16_t goep_cid);
 
 /**
- * brief Get PBAP Supported Features found in SDP record during connect
+ * @brief Get PBAP Supported Features found in SDP record during connect
  */
 uint32_t goep_client_get_pbap_supported_features(uint16_t goep_cid); 
+
+/**
+ * @brief Check if GOEP 2.0 or higher features can be used
+ * @return true if GOEP Version 2.0 or higher
+ */
+bool goep_client_version_20_or_higher(uint16_t goep_cid);
 
 /**
  * @brief Set Connection ID used for newly created requests
@@ -148,6 +153,15 @@ void goep_client_request_create_set_path(uint16_t goep_cid, uint8_t flags);
 void goep_client_request_create_put(uint16_t goep_cid);
 
 /**
+ * @brief Get max size of body data that can be added to current response with goep_client_body_add_static
+ * @param goep_cid
+ * @param data
+ * @param length
+ * @return size in bytes or 0
+ */
+uint16_t goep_client_request_get_max_body_size(uint16_t goep_cid);
+
+/**
  * @brief Add SRM Enable
  * @param goep_cid
  */
@@ -184,6 +198,14 @@ void goep_client_header_add_variable(uint16_t goep_cid, uint8_t header_type, con
  * @param name
  */
 void goep_client_header_add_name(uint16_t goep_cid, const char * name);
+
+/**
+ * @brief Add name header to current request
+ * @param goep_cid
+ * @param name
+ * @param name_len
+ */
+void goep_client_header_add_name_prefix(uint16_t goep_cid, const char * name, uint16_t name_len);
 
 /**
  * @brief Add target header to current request
@@ -237,6 +259,11 @@ void goep_client_body_add_static(uint16_t goep_cid, const uint8_t * data, uint32
  * @param daa 
  */
 int goep_client_execute(uint16_t goep_cid);
+
+/**
+ * @brief De-Init GOEP Client
+ */
+void goep_client_deinit(void);
 
 /* API_END */
 

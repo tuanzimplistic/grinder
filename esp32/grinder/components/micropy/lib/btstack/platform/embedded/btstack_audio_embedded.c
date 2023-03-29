@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -75,6 +75,11 @@ static volatile uint16_t  input_buffer_num_samples;
 static int source_active;
 static int sink_active;
 
+// Support for stereo-only audio hal
+#ifdef HAVE_HAL_AUDIO_SINK_STEREO_ONLY
+static bool output_duplicate_samples;
+#endif
+
 static void btstack_audio_audio_played(uint8_t buffer_index){
     output_buffer_to_play = (buffer_index + 1) % output_buffer_count;
 }
@@ -91,6 +96,18 @@ static void driver_timer_handler_sink(btstack_timer_source_t * ts){
     if (output_buffer_to_play != output_buffer_to_fill){
         int16_t * buffer = hal_audio_sink_get_output_buffer(output_buffer_to_fill);
         (*playback_callback)(buffer, output_buffer_samples);
+
+#ifdef HAVE_HAL_AUDIO_SINK_STEREO_ONLY
+        if (output_duplicate_samples){
+            unsigned int i = output_buffer_samples;
+            do {
+                i--;
+                int16_t sample = buffer[i];
+                buffer[2*i + 0] = sample;
+                buffer[2*i + 1] = sample;
+            } while ( i > 0 );
+        }
+#endif
 
         // next
         output_buffer_to_fill = (output_buffer_to_fill + 1 ) % output_buffer_count;
@@ -118,10 +135,14 @@ static int btstack_audio_embedded_sink_init(
     uint32_t samplerate, 
     void (*playback)(int16_t * buffer, uint16_t num_samples)
 ){
-    if (!playback){
-        log_error("No playback callback");
-        return 1;
-    }
+    btstack_assert(playback != NULL);
+    btstack_assert(channels != 0);
+
+#ifdef HAVE_HAL_AUDIO_SINK_STEREO_ONLY
+    // always use stereo from hal, duplicate samples if needed
+    output_duplicate_samples = channels != 2;
+    channels = 2;
+#endif
 
     playback_callback  = playback;
 
@@ -147,9 +168,19 @@ static int btstack_audio_embedded_source_init(
     return 0;
 }
 
+static void btstack_audio_embedded_sink_set_volume(uint8_t volume){
+    UNUSED(volume);
+}
+
+static void btstack_audio_embedded_source_set_gain(uint8_t gain){
+    UNUSED(gain);
+}
+
 static void btstack_audio_embedded_sink_start_stream(void){
     output_buffer_count   = hal_audio_sink_get_num_output_buffers();
     output_buffer_samples = hal_audio_sink_get_num_output_buffer_samples();
+
+    btstack_assert(output_buffer_samples > 0);
 
     // pre-fill HAL buffers
     uint16_t i;
@@ -227,6 +258,7 @@ static void btstack_audio_embedded_source_close(void){
 
 static const btstack_audio_sink_t btstack_audio_embedded_sink = {
     /* int (*init)(..);*/                                       &btstack_audio_embedded_sink_init,
+    /* void (*set_volume)(uint8_t volume); */                   &btstack_audio_embedded_sink_set_volume,
     /* void (*start_stream(void));*/                            &btstack_audio_embedded_sink_start_stream,
     /* void (*stop_stream)(void)  */                            &btstack_audio_embedded_sink_stop_stream,
     /* void (*close)(void); */                                  &btstack_audio_embedded_sink_close
@@ -234,6 +266,7 @@ static const btstack_audio_sink_t btstack_audio_embedded_sink = {
 
 static const btstack_audio_source_t btstack_audio_embedded_source = {
     /* int (*init)(..);*/                                       &btstack_audio_embedded_source_init,
+    /* void (*set_gain)(uint8_t gain); */                       &btstack_audio_embedded_source_set_gain,
     /* void (*start_stream(void));*/                            &btstack_audio_embedded_source_start_stream,
     /* void (*stop_stream)(void)  */                            &btstack_audio_embedded_source_stop_stream,
     /* void (*close)(void); */                                  &btstack_audio_embedded_source_close

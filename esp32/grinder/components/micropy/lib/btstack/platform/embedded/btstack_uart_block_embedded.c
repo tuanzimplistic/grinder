@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -40,17 +40,20 @@
 /*
  *  btstack_uart_block_embedded.c
  *
- *  Common code to access UART via asynchronous block read/write commands on top of hal_uart_dma.h
- *
+ *  Adapter to IRQ-driven hal_uart_dma.h with Embedded BTstack Run Loop
+ *  Callbacks are executed on main thread via data source and btstack_run_loop_poll_data_sources_from_irq
  */
 
 #include "btstack_debug.h"
 #include "btstack_uart_block.h"
-#include "btstack_run_loop_embedded.h"
+#include "btstack_run_loop.h"
 #include "hal_uart_dma.h"
 
+// NULL
+#include <stddef.h>
+
 // uart config
-static const btstack_uart_config_t * uart_config;
+static const btstack_uart_config_t * btstack_uart_block_configuration;
 
 // data source for integration with BTstack Runloop
 static btstack_data_source_t transport_data_source;
@@ -67,21 +70,21 @@ static void (*wakeup_handler)(void);
 
 static void btstack_uart_block_received(void){
     receive_complete = 1;
-    btstack_run_loop_embedded_trigger();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 static void btstack_uart_block_sent(void){
     send_complete = 1;
-    btstack_run_loop_embedded_trigger();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 static void btstack_uart_cts_pulse(void){
     wakeup_event = 1;
-    btstack_run_loop_embedded_trigger();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 static int btstack_uart_embedded_init(const btstack_uart_config_t * config){
-    uart_config = config;
+    btstack_uart_block_configuration = config;
     hal_uart_dma_set_block_received(&btstack_uart_block_received);
     hal_uart_dma_set_block_sent(&btstack_uart_block_sent);
     return 0;
@@ -116,7 +119,7 @@ static void btstack_uart_embedded_process(btstack_data_source_t *ds, btstack_dat
 
 static int btstack_uart_embedded_open(void){
     hal_uart_dma_init();
-    hal_uart_dma_set_baud(uart_config->baudrate);
+    hal_uart_dma_set_baud(btstack_uart_block_configuration->baudrate);
 
     // set up polling data_source
     btstack_run_loop_set_data_source_handler(&transport_data_source, &btstack_uart_embedded_process);
@@ -202,6 +205,7 @@ static const btstack_uart_block_t btstack_uart_embedded = {
 	/* int (*get_supported_sleep_modes); */                           &btstack_uart_embedded_get_supported_sleep_modes,
     /* void (*set_sleep)(btstack_uart_sleep_mode_t sleep_mode); */    &btstack_uart_embedded_set_sleep,
     /* void (*set_wakeup_handler)(void (*handler)(void)); */          &btstack_uart_embedded_set_wakeup_handler,
+    NULL, NULL, NULL, NULL,
 };
 
 const btstack_uart_block_t * btstack_uart_block_embedded_instance(void){

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "led_counter.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(led_counter): Hello World: blinking LED without Bluetooth
+/* EXAMPLE_START(led_counter): Hello World - Blinking an LED without Bluetooth
  *
  * @text The example demonstrates how to provide a periodic timer to toggle an
  * LED and send debug messages to the console as a minimal BTstack test.
@@ -73,7 +73,7 @@ static void heartbeat_handler(btstack_timer_source_t *ts){
 
     // increment counter
     char lineBuffer[30];
-    sprintf(lineBuffer, "BTstack counter %04u\n\r", ++counter);
+    snprintf(lineBuffer, sizeof(lineBuffer), "BTstack counter %04u\n\r", ++counter);
     puts(lineBuffer);
     
     // toggle LED

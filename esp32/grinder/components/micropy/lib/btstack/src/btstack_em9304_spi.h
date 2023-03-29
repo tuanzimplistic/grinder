@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,12 +35,13 @@
  *
  */
 
-/*
- *  btstack_em9304_spi.h
+/**
+ * @title EM9304 SPI
  *
- *  BTstack's Hardware Abstraction Layer for EM9304 connected via SPI with additional RDY Interrupt line
-
+ * BTstack's Hardware Abstraction Layer for EM9304 connected via SPI with additional RDY Interrupt line.
+ *
  */
+
 #ifndef BTSTACK_EM9304_SPI_H
 #define BTSTACK_EM9304_SPI_H
 
@@ -54,8 +55,6 @@ extern "C" {
 
 #include <stdint.h>
 typedef struct {
-
-    /* API_START */
 
     /**
      * @brief Open SPI
@@ -121,9 +120,11 @@ typedef struct {
 } btstack_em9304_spi_t;
 
 /**
- *
+ * @brief Get EM9304 SPI instance
  */
 const btstack_em9304_spi_t * btstack_em9304_spi_embedded_instance(void);
+
+/* API_END */
 
 #if defined __cplusplus
 }

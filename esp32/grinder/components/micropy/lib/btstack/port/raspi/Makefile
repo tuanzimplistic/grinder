@@ -8,14 +8,16 @@ CORE += \
 	btstack_link_key_db_tlv.c \
 	btstack_run_loop_posix.c \
 	btstack_tlv_posix.c \
-	btstack_uart_block_posix.c \
+	btstack_uart_posix.c \
 	btstack_slip.c \
+	hci_dump_posix_fs.c \
 	hci_transport_h4.c \
 	hci_transport_h5.c \
 	le_device_db_tlv.c \
 	main.c \
 	wav_util.c 					\
 	btstack_stdin_posix.c \
+	btstack_signal.c \
 	raspi_get_model.c \
 	rijndael.c
 
@@ -34,8 +36,11 @@ CFLAGS  += -g -Wall -Werror \
 
 
 
-# add 'real time' lib for clock_gettime
+# add 'real time' lib for clock_gettime,
 LDFLAGS += -lrt
+
+# add pthread for ctrl-c signal handler
+LDFLAGS += -lpthread
 
 VPATH += ${BTSTACK_ROOT}/3rd-party/rijndael
 VPATH += ${BTSTACK_ROOT}/platform/posix

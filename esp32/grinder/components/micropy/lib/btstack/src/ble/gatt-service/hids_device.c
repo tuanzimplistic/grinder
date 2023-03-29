@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -60,7 +60,7 @@ typedef struct{
     uint16_t        hid_descriptor_size;
 
     uint16_t        hid_report_map_handle;
-    uint16_t        hid_protocol_mode;
+    uint8_t         hid_protocol_mode;
     uint16_t        hid_protocol_mode_value_handle;
 
     uint16_t        hid_boot_mouse_input_value_handle;
@@ -197,7 +197,7 @@ static uint16_t att_read_callback(hci_con_handle_t con_handle, uint16_t att_hand
     }
     
     if (att_handle == instance->hid_control_point_value_handle){
-        if (buffer && (buffer_size >= 1)){
+        if (buffer && (buffer_size >= 1u)){
             buffer[0] = instance->hid_control_point_suspend;
         } 
         return 1;
@@ -219,30 +219,30 @@ static int att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, 
     if (att_handle == instance->hid_boot_mouse_input_client_configuration_handle){
         uint16_t new_value = little_endian_read_16(buffer, 0);
         instance->hid_boot_mouse_input_client_configuration_value = new_value;
-        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE, con_handle, new_value);
+        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE, con_handle, (uint8_t) new_value);
     }
     if (att_handle == instance->hid_boot_keyboard_input_client_configuration_handle){
         uint16_t new_value = little_endian_read_16(buffer, 0);
         instance->hid_boot_keyboard_input_client_configuration_value = new_value;
-        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE, con_handle, new_value);
+        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE, con_handle, (uint8_t) new_value);
     }
     if (att_handle == instance->hid_report_input_client_configuration_handle){
         uint16_t new_value = little_endian_read_16(buffer, 0);
         instance->hid_report_input_client_configuration_value = new_value;
         log_info("Enable Report Input notifications: %x", new_value);
-        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_INPUT_REPORT_ENABLE, con_handle, new_value);
+        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_INPUT_REPORT_ENABLE, con_handle, (uint8_t) new_value);
     }
     if (att_handle == instance->hid_report_output_client_configuration_handle){
         uint16_t new_value = little_endian_read_16(buffer, 0);
         instance->hid_report_output_client_configuration_value = new_value;
         log_info("Enable Report Output notifications: %x", new_value);
-        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_OUTPUT_REPORT_ENABLE, con_handle, new_value);
+        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_OUTPUT_REPORT_ENABLE, con_handle, (uint8_t) new_value);
     }
     if (att_handle == instance->hid_report_feature_client_configuration_handle){
         uint16_t new_value = little_endian_read_16(buffer, 0);
         instance->hid_report_feature_client_configuration_value = new_value;
         log_info("Enable Report Feature notifications: %x", new_value);
-        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_FEATURE_REPORT_ENABLE, con_handle, new_value);
+        hids_device_emit_event_with_uint8(HIDS_SUBEVENT_FEATURE_REPORT_ENABLE, con_handle, (uint8_t) new_value);
     }
 
     if (att_handle == instance->hid_protocol_mode_value_handle){
@@ -252,15 +252,15 @@ static int att_write_callback(hci_con_handle_t con_handle, uint16_t att_handle, 
     }
     
     if (att_handle == instance->hid_control_point_value_handle){
-        if (buffer_size < 1){
+        if (buffer_size < 1u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->hid_control_point_suspend = buffer[0];
         instance->con_handle = con_handle;
         log_info("Set suspend tp: %u", instance->hid_control_point_suspend );
-        if (instance->hid_control_point_suspend == 0){
+        if (instance->hid_control_point_suspend == 0u){
             hids_device_emit_event(HIDS_SUBEVENT_SUSPEND, con_handle);
-        } else if (instance->hid_control_point_suspend == 1){ 
+        } else if (instance->hid_control_point_suspend == 1u){ 
             hids_device_emit_event(HIDS_SUBEVENT_EXIT_SUSPEND, con_handle);
         }
     }
@@ -287,8 +287,9 @@ void hids_device_init(uint8_t country_code, const uint8_t * descriptor, uint16_t
     // get service handle range
     uint16_t start_handle = 0;
     uint16_t end_handle   = 0xfff;
-    int service_found = gatt_server_get_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE, &start_handle, &end_handle);
-    if (!service_found) return;
+    int service_found = gatt_server_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE, &start_handle, &end_handle);
+	btstack_assert(service_found != 0);
+	UNUSED(service_found);
 
     // get report map handle
     instance->hid_report_map_handle                               = gatt_server_get_value_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT_MAP);
@@ -306,10 +307,10 @@ void hids_device_init(uint8_t country_code, const uint8_t * descriptor, uint16_t
     instance->hid_report_input_value_handle                       = gatt_server_get_value_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
     instance->hid_report_input_client_configuration_handle        = gatt_server_get_client_configuration_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
 
-    instance->hid_report_output_value_handle                      = gatt_server_get_value_handle_for_characteristic_with_uuid16(instance->hid_report_input_client_configuration_handle+1, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
+    instance->hid_report_output_value_handle                      = gatt_server_get_value_handle_for_characteristic_with_uuid16(instance->hid_report_input_client_configuration_handle+1u, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
     instance->hid_report_output_client_configuration_handle       = gatt_server_get_client_configuration_handle_for_characteristic_with_uuid16(instance->hid_report_input_client_configuration_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
 
-    instance->hid_report_feature_value_handle                     = gatt_server_get_value_handle_for_characteristic_with_uuid16(instance->hid_report_output_client_configuration_handle+1, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
+    instance->hid_report_feature_value_handle                     = gatt_server_get_value_handle_for_characteristic_with_uuid16(instance->hid_report_output_client_configuration_handle+1u, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
     instance->hid_report_feature_client_configuration_handle      = gatt_server_get_client_configuration_handle_for_characteristic_with_uuid16(instance->hid_report_output_client_configuration_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_REPORT);
 
     instance->hid_control_point_value_handle = gatt_server_get_value_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_HID_CONTROL_POINT);

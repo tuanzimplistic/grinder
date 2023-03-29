@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "hog_mouse_demo.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(hog_mouse_demo): HID-over-GATT Mouse
+/* EXAMPLE_START(hog_mouse_demo): HID Mouse LE
  */
 // *****************************************************************************
 
@@ -98,9 +98,11 @@ const uint8_t hid_descriptor_mouse_boot_mode[] = {
 };
 
 static btstack_packet_callback_registration_t hci_event_callback_registration;
+static btstack_packet_callback_registration_t l2cap_event_callback_registration;
 static btstack_packet_callback_registration_t sm_event_callback_registration;
 static uint8_t battery = 100;
 static hci_con_handle_t con_handle = HCI_CON_HANDLE_INVALID;
+static uint8_t protocol_mode = 1;
 
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
@@ -118,13 +120,8 @@ const uint8_t adv_data_len = sizeof(adv_data);
 
 static void hog_mouse_setup(void){
 
-
-    // setup l2cap and register for connection parameter updates
+    // setup l2cap and
     l2cap_init();
-    l2cap_register_packet_handler(&packet_handler);
-
-    // setup le device db
-    le_device_db_init();
 
     // setup SM: Display only
     sm_init();
@@ -158,6 +155,10 @@ static void hog_mouse_setup(void){
     hci_event_callback_registration.callback = &packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
 
+    // register for connection parameter updates
+    l2cap_event_callback_registration.callback = &packet_handler;
+    l2cap_add_event_handler(&l2cap_event_callback_registration);
+
     sm_event_callback_registration.callback = &packet_handler;
     sm_add_event_handler(&sm_event_callback_registration);
 
@@ -166,9 +167,16 @@ static void hog_mouse_setup(void){
 
 // HID Report sending
 static void send_report(uint8_t buttons, int8_t dx, int8_t dy){
-    // uint8_t report[] = { (uint8_t) dx, (uint8_t) dy, buttons};
-    uint8_t report[] = { buttons, (uint8_t) dx, (uint8_t) dy};
-    hids_device_send_input_report(con_handle, report, sizeof(report));
+    uint8_t report[] = { buttons, (uint8_t) dx, (uint8_t) dy, 0};
+    switch (protocol_mode){
+        case 0:
+            hids_device_send_boot_mouse_input_report(con_handle, report, sizeof(report));
+        case 1:
+            hids_device_send_input_report(con_handle, report, sizeof(report));
+            break;
+        default:
+            break;
+    }
     printf("Mouse: %d/%d - buttons: %02x\n", dx, dy, buttons);
 }
 
@@ -301,80 +309,83 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
     UNUSED(size);
     uint16_t conn_interval;
 
-    switch (packet_type) {
-        case HCI_EVENT_PACKET:
-            switch (hci_event_packet_get_type(packet)) {
-                case HCI_EVENT_DISCONNECTION_COMPLETE:
-                    con_handle = HCI_CON_HANDLE_INVALID;
-                    printf("Disconnected\n");
-                    break;
-                case SM_EVENT_JUST_WORKS_REQUEST:
-                    printf("Just Works requested\n");
-                    sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
-                    break;
-                case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-                    printf("Confirming numeric comparison: %"PRIu32"\n", sm_event_numeric_comparison_request_get_passkey(packet));
-                    sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
-                    break;
-                case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-                    printf("Display Passkey: %"PRIu32"\n", sm_event_passkey_display_number_get_passkey(packet));
-                    break;
-                case L2CAP_EVENT_CONNECTION_PARAMETER_UPDATE_RESPONSE:
-                    printf("L2CAP Connection Parameter Update Complete, response: %x\n", l2cap_event_connection_parameter_update_response_get_result(packet));
-                    break;
-                case HCI_EVENT_LE_META:
-                    switch (hci_event_le_meta_get_subevent_code(packet)) {
-                        case HCI_SUBEVENT_LE_CONNECTION_COMPLETE:
-                            // print connection parameters (without using float operations)
-                            conn_interval = hci_subevent_le_connection_complete_get_conn_interval(packet);
-                            printf("LE Connection Complete:\n");
-                            printf("- Connection Interval: %u.%02u ms\n", conn_interval * 125 / 100, 25 * (conn_interval & 3));
-                            printf("- Connection Latency: %u\n", hci_subevent_le_connection_complete_get_conn_latency(packet));
-                            break;
-                        case HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE:
-                            // print connection parameters (without using float operations)
-                            conn_interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet);
-                            printf("LE Connection Update:\n");
-                            printf("- Connection Interval: %u.%02u ms\n", conn_interval * 125 / 100, 25 * (conn_interval & 3));
-                            printf("- Connection Latency: %u\n", hci_subevent_le_connection_update_complete_get_conn_latency(packet));
-                            break;
-                        default:
-                            break;
-                    }
-                    break;  
-                case HCI_EVENT_HIDS_META:
-                    switch (hci_event_hids_meta_get_subevent_code(packet)){
-                        case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
-                            con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
-                            printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
-#ifndef HAVE_BTSTACK_STDIN
-                            hid_embedded_start_mousing();
-#endif
-                            // request connection param update via L2CAP following Apple Bluetooth Design Guidelines
-                            // gap_request_connection_parameter_update(con_handle, 12, 12, 4, 100);    // 15 ms, 4, 1s
+    if (packet_type != HCI_EVENT_PACKET) return;
 
-                            // directly update connection params via HCI following Apple Bluetooth Design Guidelines
-                            // gap_update_connection_parameters(con_handle, 12, 12, 4, 100);    // 60-75 ms, 4, 1s
-
-                            break;
-                        case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
-                            con_handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
-                            printf("Boot Keyboard Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
-                            break;
-                        case HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE:
-                            con_handle = hids_subevent_boot_mouse_input_report_enable_get_con_handle(packet);
-                            printf("Boot Mouse Characteristic Subscribed %u\n", hids_subevent_boot_mouse_input_report_enable_get_enable(packet));
-                            break;
-                        case HIDS_SUBEVENT_PROTOCOL_MODE:
-                            printf("Protocol Mode: %s mode\n", hids_subevent_protocol_mode_get_protocol_mode(packet) ? "Report" : "Boot");
-                            break;
-                        case HIDS_SUBEVENT_CAN_SEND_NOW:
-                            mousing_can_send_now();
-                            break;
-                        default:
-                            break;
-                    }
+    switch (hci_event_packet_get_type(packet)) {
+        case HCI_EVENT_DISCONNECTION_COMPLETE:
+            con_handle = HCI_CON_HANDLE_INVALID;
+            printf("Disconnected\n");
+            break;
+        case SM_EVENT_JUST_WORKS_REQUEST:
+            printf("Just Works requested\n");
+            sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
+            break;
+        case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
+            printf("Confirming numeric comparison: %"PRIu32"\n", sm_event_numeric_comparison_request_get_passkey(packet));
+            sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+            break;
+        case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
+            printf("Display Passkey: %"PRIu32"\n", sm_event_passkey_display_number_get_passkey(packet));
+            break;
+        case L2CAP_EVENT_CONNECTION_PARAMETER_UPDATE_RESPONSE:
+            printf("L2CAP Connection Parameter Update Complete, response: %x\n", l2cap_event_connection_parameter_update_response_get_result(packet));
+            break;
+        case HCI_EVENT_LE_META:
+            switch (hci_event_le_meta_get_subevent_code(packet)) {
+                case HCI_SUBEVENT_LE_CONNECTION_COMPLETE:
+                    // print connection parameters (without using float operations)
+                    conn_interval = hci_subevent_le_connection_complete_get_conn_interval(packet);
+                    printf("LE Connection Complete:\n");
+                    printf("- Connection Interval: %u.%02u ms\n", conn_interval * 125 / 100, 25 * (conn_interval & 3));
+                    printf("- Connection Latency: %u\n", hci_subevent_le_connection_complete_get_conn_latency(packet));
+                    break;
+                case HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE:
+                    // print connection parameters (without using float operations)
+                    conn_interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet);
+                    printf("LE Connection Update:\n");
+                    printf("- Connection Interval: %u.%02u ms\n", conn_interval * 125 / 100, 25 * (conn_interval & 3));
+                    printf("- Connection Latency: %u\n", hci_subevent_le_connection_update_complete_get_conn_latency(packet));
+                    break;
+                default:
+                    break;
             }
+            break;  
+        case HCI_EVENT_HIDS_META:
+            switch (hci_event_hids_meta_get_subevent_code(packet)){
+                case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
+                    con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
+                    printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
+#ifndef HAVE_BTSTACK_STDIN
+                    hid_embedded_start_mousing();
+#endif
+                    // request connection param update via L2CAP following Apple Bluetooth Design Guidelines
+                    // gap_request_connection_parameter_update(con_handle, 12, 12, 4, 100);    // 15 ms, 4, 1s
+
+                    // directly update connection params via HCI following Apple Bluetooth Design Guidelines
+                    // gap_update_connection_parameters(con_handle, 12, 12, 4, 100);    // 60-75 ms, 4, 1s
+
+                    break;
+                case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
+                    con_handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
+                    printf("Boot Keyboard Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
+                    break;
+                case HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE:
+                    con_handle = hids_subevent_boot_mouse_input_report_enable_get_con_handle(packet);
+                    printf("Boot Mouse Characteristic Subscribed %u\n", hids_subevent_boot_mouse_input_report_enable_get_enable(packet));
+                    break;
+                case HIDS_SUBEVENT_PROTOCOL_MODE:
+                    protocol_mode = hids_subevent_protocol_mode_get_protocol_mode(packet);
+                    printf("Protocol Mode: %s mode\n", hids_subevent_protocol_mode_get_protocol_mode(packet) ? "Report" : "Boot");
+                    break;
+                case HIDS_SUBEVENT_CAN_SEND_NOW:
+                    mousing_can_send_now();
+                    break;
+                default:
+                    break;
+            }
+            break;
+            
+        default:
             break;
     }
 }

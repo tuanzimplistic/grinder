@@ -10,6 +10,7 @@
 #include "ls_detection.h"
 #include "observer.h"
 #include "log.h"
+#include "micropy.h"
 
 static const char *TAG =  "application";
 
@@ -52,4 +53,5 @@ void app_main(void)
     init_ls_detection();
     start_ls_detection();
     xTaskCreate(application_task, "application_task", 3072, NULL, uxTaskPriorityGet(NULL), NULL); 
+    start_micropy();
 }

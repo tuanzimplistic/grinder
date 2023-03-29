@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -77,6 +77,9 @@ static void (*block_received)(void);
 static HANDLE serial_port_handle;
 static OVERLAPPED overlapped_read;
 static OVERLAPPED overlapped_write;
+
+// fix for chipset drivers that need to download firmware before stack starts up
+bool serial_port_open = false;
 
 // -- engine that retries send/receive if not all bytes have been transferred
 
@@ -211,7 +214,7 @@ static void btstack_uart_windows_process_read(btstack_data_source_t *ds, btstack
     if (bytes_read != read_bytes_len){
         log_debug("read: requested read %u but %u were read, try again", (int)  read_bytes_len, (int)  bytes_read);
         read_bytes_data += bytes_read;
-        read_bytes_len  -= bytes_read;
+        read_bytes_len  -= (uint16_t) bytes_read;
         btstack_uart_windows_receive_engine();
         return;
     }
@@ -321,6 +324,12 @@ static int btstack_uart_windows_set_flowcontrol(int flowcontrol){
 
 static int btstack_uart_windows_open(void){
 
+    // allow to call open again
+    if (serial_port_open){
+        log_info("Serial port already open");
+        return 0;
+    }
+
     const char * device_name = uart_config->device_name;
     const uint32_t baudrate  = uart_config->baudrate;
     const int flowcontrol    = uart_config->flowcontrol;
@@ -333,7 +342,7 @@ static int btstack_uart_windows_open(void){
                         FILE_FLAG_OVERLAPPED,
                         0);
 
-    if (device_name == INVALID_HANDLE_VALUE){
+    if (serial_port_handle == INVALID_HANDLE_VALUE){
         log_error("windows_open: Unable to open port %s", device_name);
         return -1;
     }
@@ -407,10 +416,14 @@ static int btstack_uart_windows_open(void){
     btstack_run_loop_add_data_source(&transport_data_source_read);
     btstack_run_loop_add_data_source(&transport_data_source_write);
 
+    serial_port_open = true;
+
     return 0;
 } 
 
 static int btstack_uart_windows_close_new(void){
+
+    serial_port_open = false;
 
     // first remove run loop handler
     btstack_run_loop_remove_data_source(&transport_data_source_read);
@@ -458,6 +471,7 @@ static const btstack_uart_block_t btstack_uart_windows = {
     /* int (*get_supported_sleep_modes); */                           NULL,
     /* void (*set_sleep)(btstack_uart_sleep_mode_t sleep_mode); */    NULL,
     /* void (*set_wakeup_handler)(void (*handler)(void)); */          NULL,
+    NULL, NULL, NULL, NULL,
 };
 
 const btstack_uart_block_t * btstack_uart_block_windows_instance(void){

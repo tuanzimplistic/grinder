@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -36,9 +36,12 @@
  */
 
 /**
- *  Static Link Key implementation to use during development/porting:
+ * @title Static Link Key Storage
+ *  
+ * Static Link Key Storage implementation to use during development/porting:
  *  - Link keys have to be manually added to this file to make them usable
  *  + Link keys are preserved on reflash in constrast to the program flash based link key store
+ *
  */
 
 #ifndef BTSTACK_LINK_KEY_DB_STATIC_H
@@ -49,6 +52,8 @@
 #if defined __cplusplus
 extern "C" {
 #endif
+
+/* API_START */
 
 /*
  * @brief

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title HID Service Server
+ * 
+ */
+
 #ifndef HIDS_DEVICE_H
 #define HIDS_DEVICE_H
 
@@ -45,8 +51,10 @@
 extern "C" {
 #endif
 
+/* API_START */
+
 /**
- * Implementation of the GATT HIDS Device
+ * @text Implementation of the GATT HIDS Device
  * To use with your application, add '#import <hids.gatt>' to your .gatt file
  */
 
@@ -92,6 +100,8 @@ void hids_device_send_boot_mouse_input_report(hci_con_handle_t con_handle, const
  * @brief Send HID Boot Mouse Input Report
  */
 void hids_device_send_boot_keyboard_input_report(hci_con_handle_t con_handle, const uint8_t * report, uint16_t report_len);
+
+/* API_END */
 
 #if defined __cplusplus
 }

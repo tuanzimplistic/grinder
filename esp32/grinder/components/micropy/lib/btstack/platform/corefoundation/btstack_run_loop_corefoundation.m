@@ -51,11 +51,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <pthread.h>
 
 static struct timeval init_tv;
 static CFAbsoluteTime init_cf;
+static CFRunLoopRef current_runloop;
 
-static const btstack_run_loop_t btstack_run_loop_corefoundation;
+// to trigger run loop from other thread
+static int run_loop_pipe_fd;
+static btstack_data_source_t run_loop_pipe_ds;
+static pthread_mutex_t run_loop_callback_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct  {
     CFSocketRef socket;
@@ -146,13 +152,13 @@ static void btstack_run_loop_corefoundation_add_data_source(btstack_data_source_
     
 }
 
-static void btstack_run_loop_embedded_enable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
+static void btstack_run_loop_corefoundation_enable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
     btstack_corefoundation_data_source_helper_t * references = (btstack_corefoundation_data_source_helper_t *) ds->item.next;
     uint16_t option_flags = btstack_run_loop_corefoundation_option_flags_for_callback_types(callback_types);
     CFSocketEnableCallBacks(references->socket, option_flags);   
 }
 
-static void btstack_run_loop_embedded_disable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
+static void btstack_run_loop_corefoundation_disable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
     btstack_corefoundation_data_source_helper_t * references = (btstack_corefoundation_data_source_helper_t *) ds->item.next;
     uint16_t option_flags = btstack_run_loop_corefoundation_option_flags_for_callback_types(callback_types);
     CFSocketDisableCallBacks(references->socket, option_flags);   
@@ -184,7 +190,7 @@ static void btstack_run_loop_corefoundation_add_timer(btstack_timer_source_t * t
     CFRunLoopAddTimer(CFRunLoopGetCurrent(), timerRef, kCFRunLoopCommonModes);
 }
 
-static int btstack_run_loop_corefoundation_remove_timer(btstack_timer_source_t * ts){
+static bool btstack_run_loop_corefoundation_remove_timer(btstack_timer_source_t * ts){
     // printf("btstack_run_loop_corefoundation_remove_timer %x -> %x\n", (int) ts, (int) ts->item.next);
 	if (ts->item.next != NULL) {
     	CFRunLoopTimerInvalidate((CFRunLoopTimerRef) ts->item.next);    // also removes timer from run loops + releases it
@@ -212,42 +218,92 @@ static void btstack_run_loop_corefoundation_set_timer(btstack_timer_source_t *a,
     log_debug("btstack_run_loop_corefoundation_set_timer to %u ms (now %u, timeout %u)", a->timeout, time_ms, timeout_in_ms);
 }
 
+static void btstack_run_loop_corefoundation_pipe_process(btstack_data_source_t * ds, btstack_data_source_callback_type_t callback_type){
+    UNUSED(callback_type);
+    uint8_t buffer[1];
+    (void) read(ds->source.fd, buffer, 1);
+    // execute callbacks - protect list with mutex
+    while (1){
+        pthread_mutex_lock(&run_loop_callback_mutex);
+        btstack_context_callback_registration_t * callback_registration = (btstack_context_callback_registration_t *) btstack_linked_list_pop(&btstack_run_loop_base_callbacks);
+        pthread_mutex_unlock(&run_loop_callback_mutex);
+        if (callback_registration == NULL){
+            break;
+        }
+        (*callback_registration->callback)(callback_registration->context);
+    }
+}
+
+static void btstack_run_loop_corefoundation_execute_on_main_thread(btstack_context_callback_registration_t * callback_registration){
+    // protect list with mutex
+    pthread_mutex_lock(&run_loop_callback_mutex);
+    btstack_run_loop_base_add_callback(callback_registration);
+    pthread_mutex_unlock(&run_loop_callback_mutex);
+    // trigger run loop
+    if (run_loop_pipe_fd >= 0){
+        const uint8_t x = (uint8_t) 'x';
+        (void) write(run_loop_pipe_fd, &x, 1);
+    }
+}
 
 static void btstack_run_loop_corefoundation_init(void){
     gettimeofday(&init_tv, NULL);
     // calc CFAbsoluteTime for init_tv
     // note: timeval uses unix time: seconds since Jan 1st 1970, CF uses Jan 1st 2001 as reference date
     init_cf = ((double)init_tv.tv_sec) + (((double)init_tv.tv_usec)/1000000.0) - kCFAbsoluteTimeIntervalSince1970; // unix time - since Jan 1st 1970
+
+    // create pipe and register as data source
+    int fildes[2];
+    int status = pipe(fildes);
+    if (status == 0 ) {
+        run_loop_pipe_fd  = fildes[1];
+        run_loop_pipe_ds.source.fd = fildes[0];
+        run_loop_pipe_ds.flags = DATA_SOURCE_CALLBACK_READ;
+        run_loop_pipe_ds.process = &btstack_run_loop_corefoundation_pipe_process;
+        btstack_run_loop_base_add_data_source(&run_loop_pipe_ds);
+        log_info("Pipe in %u, out %u", run_loop_pipe_fd, fildes[0]);
+    } else {
+        run_loop_pipe_fd  = -1;
+        log_error("pipe() failed");
+    }
 }
 
-static void btstack_run_loop_corefoundation_execute(void)
-{
+static void btstack_run_loop_corefoundation_execute(void) {
+    current_runloop = CFRunLoopGetCurrent();
     CFRunLoopRun();
 }
 
+static void btstack_run_loop_corefoundation_trigger_exit(void){
+    if (current_runloop != NULL){
+        CFRunLoopStop(current_runloop);
+        current_runloop = NULL;
+    }
+}
 static void btstack_run_loop_corefoundation_dump_timer(void){
     log_error("WARNING: btstack_run_loop_dump_timer not implemented!");
 	return;
-}
-
-/**
- * Provide btstack_run_loop_embedded instance
- */
-const btstack_run_loop_t * btstack_run_loop_corefoundation_get_instance(void){
-    return &btstack_run_loop_corefoundation;
 }
 
 static const btstack_run_loop_t btstack_run_loop_corefoundation = {
     &btstack_run_loop_corefoundation_init,
     &btstack_run_loop_corefoundation_add_data_source,
     &btstack_run_loop_corefoundation_remove_data_source,
-    &btstack_run_loop_embedded_enable_data_source_callbacks,
-    &btstack_run_loop_embedded_disable_data_source_callbacks,
+    &btstack_run_loop_corefoundation_enable_data_source_callbacks,
+    &btstack_run_loop_corefoundation_disable_data_source_callbacks,
     &btstack_run_loop_corefoundation_set_timer,
     &btstack_run_loop_corefoundation_add_timer,
     &btstack_run_loop_corefoundation_remove_timer,
     &btstack_run_loop_corefoundation_execute,
     &btstack_run_loop_corefoundation_dump_timer,
     &btstack_run_loop_corefoundation_get_time_ms,
+    NULL, /* poll data sources from irq */
+    &btstack_run_loop_corefoundation_execute_on_main_thread,
+    &btstack_run_loop_corefoundation_trigger_exit,
 };
 
+/**
+ * Provide btstack_run_loop_corefoundation instance
+ */
+const btstack_run_loop_t * btstack_run_loop_corefoundation_get_instance(void){
+    return &btstack_run_loop_corefoundation;
+}

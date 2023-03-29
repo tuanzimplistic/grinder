@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -218,6 +218,7 @@ typedef struct {
 static att_service_handler_t cycling_power_service;
 static cycling_power_t cycling_power;
 static btstack_packet_callback_registration_t hci_event_callback_registration;
+static btstack_packet_callback_registration_t l2cap_event_callback_registration;
 
 static uint16_t cycling_power_service_read_callback(hci_con_handle_t con_handle, uint16_t attribute_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size){
     UNUSED(con_handle);
@@ -226,42 +227,42 @@ static uint16_t cycling_power_service_read_callback(hci_con_handle_t con_handle,
     cycling_power_t * instance = &cycling_power;
 
     if (attribute_handle == instance->measurement_client_configuration_descriptor_handle){
-        if (buffer && (buffer_size >= 2)){
+        if (buffer && (buffer_size >= 2u)){
             little_endian_store_16(buffer, 0, instance->measurement_client_configuration_descriptor_notify);
         } 
         return 2;
     }
 
     if (attribute_handle == instance->measurement_server_configuration_descriptor_handle){
-        if (buffer && (buffer_size >= 2)){
+        if (buffer && (buffer_size >= 2u)){
             little_endian_store_16(buffer, 0, instance->measurement_server_configuration_descriptor_broadcast);
         } 
         return 2;
     }
 
     if (attribute_handle == instance->vector_client_configuration_descriptor_handle){
-        if (buffer && (buffer_size >= 2)){
+        if (buffer && (buffer_size >= 2u)){
             little_endian_store_16(buffer, 0, instance->vector_client_configuration_descriptor_notify);
         } 
         return 2;
     }
 
     if (attribute_handle == instance->control_point_client_configuration_descriptor_handle){
-        if (buffer && (buffer_size >= 2)){
+        if (buffer && (buffer_size >= 2u)){
             little_endian_store_16(buffer, 0, instance->control_point_client_configuration_descriptor_indicate);
         } 
         return 2;
     }
 
     if (attribute_handle == instance->feature_value_handle){
-        if (buffer && (buffer_size >= 4)){
+        if (buffer && (buffer_size >= 4u)){
             little_endian_store_32(buffer, 0, instance->feature_flags);
         } 
         return 4;
     }   
     
     if (attribute_handle == instance->sensor_location_value_handle){
-        if (buffer && (buffer_size >= 1)){
+        if (buffer && (buffer_size >= 1u)){
             buffer[0] = instance->sensor_location;
         } 
         return 1;
@@ -271,7 +272,7 @@ static uint16_t cycling_power_service_read_callback(hci_con_handle_t con_handle,
 
 static int has_feature(cycling_power_feature_flag_t feature){
     cycling_power_t * instance = &cycling_power;
-    return (instance->feature_flags & (1 << feature)) != 0;
+    return (instance->feature_flags & (1u << feature)) != 0u;
 }
 
 static int cycling_power_vector_instantaneous_measurement_direction(void){
@@ -353,7 +354,7 @@ static void cycling_power_service_vector_can_send_now(void * context){
     value[pos++] = vector_flags;
     int i;
     for (i = CP_VECTOR_FLAG_CRANK_REVOLUTION_DATA_PRESENT; i <= CP_VECTOR_FLAG_INSTANTANEOUS_MEASUREMENT_DIRECTION; i++){
-        if ((vector_flags & (1 << i)) == 0) continue;
+        if ((vector_flags & (1u << i)) == 0u) continue;
         switch ((cycling_power_vector_flag_t) i){
             case CP_VECTOR_FLAG_CRANK_REVOLUTION_DATA_PRESENT:
                 little_endian_store_16(value, pos, instance->cumulative_crank_revolutions);
@@ -364,13 +365,13 @@ static void cycling_power_service_vector_can_send_now(void * context){
             case CP_VECTOR_FLAG_INSTANTANEOUS_FORCE_MAGNITUDE_ARRAY_PRESENT:{
                 uint16_t att_mtu = att_server_get_mtu(instance->con_handle);
                 uint16_t bytes_left = 0;
-                if (att_mtu > (pos + 3)){
-                    bytes_left = btstack_min(sizeof(value), att_mtu - 3 - pos);
+                if (att_mtu > (pos + 3u)){
+                    bytes_left = btstack_min(sizeof(value), att_mtu - 3u - pos);
                 }
-                while ((bytes_left > 2) && instance->force_magnitude_count){
+                while ((bytes_left > 2u) && instance->force_magnitude_count){
                     little_endian_store_16(value, pos, instance->vector_instantaneous_force_magnitude_newton_array[0]);
                     pos += 2;
-                    bytes_left -= 2;
+                    bytes_left -= 2u;
                     instance->vector_instantaneous_force_magnitude_newton_array++;
                     instance->force_magnitude_count--;
                 }
@@ -379,21 +380,20 @@ static void cycling_power_service_vector_can_send_now(void * context){
             case CP_VECTOR_FLAG_INSTANTANEOUS_TORQUE_MAGNITUDE_ARRAY_PRESENT:{
                 uint16_t att_mtu = att_server_get_mtu(instance->con_handle);
                 uint16_t bytes_left = 0;
-                if (att_mtu > (pos + 3)){
-                    bytes_left = btstack_min(sizeof(value), att_mtu - 3 - pos);
+                if (att_mtu > (pos + 3u)){
+                    bytes_left = btstack_min(sizeof(value), att_mtu - 3u - pos);
                 }
 
-                while ((bytes_left > 2) && instance->torque_magnitude_count){
+                while ((bytes_left > 2u) && instance->torque_magnitude_count){
                     little_endian_store_16(value, pos, instance->vector_instantaneous_torque_magnitude_newton_per_m_array[0]);
                     pos += 2;
-                    bytes_left -= 2;
+                    bytes_left -= 2u;
                     instance->vector_instantaneous_torque_magnitude_newton_per_m_array++;
                     instance->torque_magnitude_count--;
                 }
                 break;
             }
             case CP_VECTOR_FLAG_FIRST_CRANK_MEASUREMENT_ANGLE_PRESENT:
-                // printf("CP_VECTOR_FLAG_FIRST_CRANK_MEASUREMENT_ANGLE_PRESENT \n");
                 little_endian_store_16(value, pos, instance->vector_first_crank_measurement_angle_deg);
                 pos += 2;
                 break;
@@ -489,7 +489,7 @@ static int cycling_power_store_measurement_flag_value(cycling_power_t * instance
 
 
 static int cycling_power_store_measurement(cycling_power_t * instance, uint8_t * value, uint16_t max_value_size){
-    if (max_value_size < 4) return 0;
+    if (max_value_size < 4u) return 0u;
     if (!instance) return 0;
 
     uint16_t measurement_flags = cycling_power_service_get_measurement_flags(instance);
@@ -501,7 +501,7 @@ static int cycling_power_store_measurement(cycling_power_t * instance, uint8_t *
     int flag_index;
     uint16_t bytes_left = max_value_size - pos;
     for (flag_index = 0; flag_index < CP_MEASUREMENT_FLAG_RESERVED; flag_index++){
-        if ((measurement_flags & (1 << flag_index)) == 0) continue;
+        if ((measurement_flags & (1u << flag_index)) == 0u) continue;
         cycling_power_measurement_flag_t flag = (cycling_power_measurement_flag_t) flag_index;
         uint16_t value_size = cycling_power_measurement_flag_value_size(flag);
         if (value_size > bytes_left ) return pos;
@@ -513,7 +513,7 @@ static int cycling_power_store_measurement(cycling_power_t * instance, uint8_t *
 }
 
 int cycling_power_get_measurement_adv(uint16_t adv_interval, uint8_t * broadcast_adv, uint16_t max_value_size){
-    if (max_value_size < 12) return 0;
+    if (max_value_size < 12u) return 0u;
     cycling_power_t * instance =  &cycling_power;
     int pos = 0;
     // adv flags
@@ -571,11 +571,6 @@ static void cycling_power_service_response_can_send_now(void * context){
         log_error("cycling_power_service_response_can_send_now: CP_RESPONSE_VALUE_W4_VALUE_AVAILABLE");
         return;
     } 
-
-    // if (instance->w4_indication_complete){
-    //     printf("cycling_power_service_response_can_send_now: w4_indication_complete\n");
-    //     return;
-    // }
 
     // use preprocessor instead of btstack_max to get compile-time constant
 #if (CP_SENSOR_LOCATION_RESERVED > (CYCLING_POWER_MANUFACTURER_SPECIFIC_DATA_MAX_SIZE + 5))
@@ -638,15 +633,14 @@ static void cycling_power_service_response_can_send_now(void * context){
                 }
                 
                 if (calibrated_value == CP_CALIBRATION_STATUS_INCORRECT_CALIBRATION_POSITION){
-                     value[pos++] = calibrated_value;
+                     value[pos++] = (uint8_t) calibrated_value;
                      // do not include manufacturer ID and data
                      break;
                 } else if (calibrated_value == CP_CALIBRATION_STATUS_MANUFACTURER_SPECIFIC_ERROR_FOLLOWS){
-                    value[pos++] = calibrated_value;
+                    value[pos++] = (uint8_t) calibrated_value;
                 } else {
                     little_endian_store_16(value, pos, calibrated_value);
                     pos += 2;
-        
                 }
                 
                 if (instance->request_opcode == CP_OPCODE_START_OFFSET_COMPENSATION) break;
@@ -669,8 +663,6 @@ static void cycling_power_service_response_can_send_now(void * context){
     uint8_t status = att_server_indicate(instance->con_handle, instance->control_point_value_handle, &value[0], pos); 
     if (status == ERROR_CODE_SUCCESS){
         instance->w4_indication_complete = 1;
-        // printf("cycling_power_service_response_can_send_now: set w4_indication_complete\n");
-        // printf("can_send_now set opcode to CP_OPCODE_IDLE\n");
         instance->request_opcode = CP_OPCODE_IDLE;
     } else {
         log_error("can_send_now failed 0x%2x", status);
@@ -686,9 +678,8 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     cycling_power_sensor_location_t location;
     cycling_power_t * instance = &cycling_power;
 
-    // printf("cycling_power_service_write_callback: attr handle 0x%02x\n", attribute_handle);
     if (attribute_handle == instance->measurement_client_configuration_descriptor_handle){
-        if (buffer_size < 2){
+        if (buffer_size < 2u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->measurement_client_configuration_descriptor_notify = little_endian_read_16(buffer, 0);
@@ -698,7 +689,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     }
 
     if (attribute_handle == instance->measurement_server_configuration_descriptor_handle){
-        if (buffer_size < 2){
+        if (buffer_size < 2u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->measurement_server_configuration_descriptor_broadcast = little_endian_read_16(buffer, 0);
@@ -706,7 +697,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
         uint8_t event[5];
         int index = 0;
         event[index++] = HCI_EVENT_GATTSERVICE_META;
-        event[index++] = sizeof(event) - 2;
+        event[index++] = sizeof(event) - 2u;
         
         if (instance->measurement_server_configuration_descriptor_broadcast){
             event[index++] = GATTSERVICE_SUBEVENT_CYCLING_POWER_BROADCAST_START;
@@ -722,7 +713,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     }
 
     if (attribute_handle == instance->vector_client_configuration_descriptor_handle){
-        if (buffer_size < 2){
+        if (buffer_size < 2u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->con_handle = con_handle;
@@ -749,7 +740,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     }
 
     if (attribute_handle == instance->control_point_client_configuration_descriptor_handle){
-        if (buffer_size < 2){
+        if (buffer_size < 2u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->control_point_client_configuration_descriptor_indicate = little_endian_read_16(buffer, 0);
@@ -759,7 +750,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     }
 
     if (attribute_handle == instance->feature_value_handle){
-        if (buffer_size < 4){
+        if (buffer_size < 4u){
             return ATT_ERROR_INVALID_OFFSET;
         }
         instance->feature_flags = little_endian_read_32(buffer, 0);
@@ -767,8 +758,8 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
     }
 
     if (attribute_handle == instance->control_point_value_handle){
-        if (instance->control_point_client_configuration_descriptor_indicate == 0) return CYCLING_POWER_ERROR_CODE_CCC_DESCRIPTOR_IMPROPERLY_CONFIGURED;
-        if (instance->w4_indication_complete != 0){
+        if (instance->control_point_client_configuration_descriptor_indicate == 0u) return CYCLING_POWER_ERROR_CODE_CCC_DESCRIPTOR_IMPROPERLY_CONFIGURED;
+        if (instance->w4_indication_complete != 0u){
             return CYCLING_POWER_ERROR_CODE_PROCEDURE_ALREADY_IN_PROGRESS;
         } 
         int pos = 0;
@@ -860,11 +851,10 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
                         ((has_feature(CP_FEATURE_FLAG_SENSOR_MEASUREMENT_CONTEXT) == CP_SENSOR_MEASUREMENT_CONTEXT_FORCE) || 
                          (has_feature(CP_FEATURE_FLAG_SENSOR_MEASUREMENT_CONTEXT) == CP_SENSOR_MEASUREMENT_CONTEXT_TORQUE))
                 ){
-                    // printf("start offset compensation procedure, enhanced %d\n", (instance->request_opcode == CP_OPCODE_START_ENHANCED_OFFSET_COMPENSATION));
                     uint8_t event[7];
                     int index = 0;
                     event[index++] = HCI_EVENT_GATTSERVICE_META;
-                    event[index++] = sizeof(event) - 2;
+                    event[index++] = sizeof(event) - 2u;
                     event[index++] = GATTSERVICE_SUBEVENT_CYCLING_POWER_START_CALIBRATION;
                     little_endian_store_16(event, index, con_handle);
                     index += 2;
@@ -885,7 +875,7 @@ static int cycling_power_service_write_callback(hci_con_handle_t con_handle, uin
                 uint16_t index = 0;
                 
                 for (i = 0; i < CP_MASK_BIT_RESERVED; i++){
-                    uint8_t clear_bit = (mask_bitmap & (1 << i)) ? 1 : 0;
+                    uint8_t clear_bit = (mask_bitmap & (1u << i)) ? 1u : 0u;
                     
                     masked_measurement_flags &= ~(clear_bit << index);
                     index++;
@@ -934,31 +924,31 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     instance->con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
                     // print connection parameters (without using float operations)
                     instance->con_interval = hci_subevent_le_connection_complete_get_conn_interval(packet);
-                    // printf("Initial Connection Interval: %u, %u.%02u ms\n", instance->con_interval, instance->con_interval * 125 / 100, 25 * (instance->con_interval & 3));
-                    // printf("Initial Connection Latency: %u\n", hci_subevent_le_connection_complete_get_conn_latency(packet));
                     instance->con_interval_status = CP_CONNECTION_INTERVAL_STATUS_RECEIVED;
                     break;
+
+#ifdef ENABLE_ATT_DELAYED_RESPONSE
                 case HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE:
                     if (instance->con_interval_status != CP_CONNECTION_INTERVAL_STATUS_W4_UPDATE) return;
                     
                     if ((instance->con_interval > instance->con_interval_max) || (instance->con_interval < instance->con_interval_min)){
                         instance->con_interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet);
-                        // printf("Updated Connection Interval: %u, %u.%02u ms\n", instance->con_interval, instance->con_interval * 125 / 100, 25 * (instance->con_interval & 3));
-                        // printf("Updated Connection Latency: %u\n", hci_subevent_le_connection_update_complete_get_conn_latency(packet));  
                         instance->con_interval_status = CP_CONNECTION_INTERVAL_STATUS_ACCEPTED;
                     } else {
                         instance->con_interval_status = CP_CONNECTION_INTERVAL_STATUS_REJECTED;
                     }
                     att_server_response_ready(l2cap_event_connection_parameter_update_response_get_handle(packet));
                     break;
+#endif
                 default:
                     break;
             }
             break;
+
+#ifdef ENABLE_ATT_DELAYED_RESPONSE
         case L2CAP_EVENT_CONNECTION_PARAMETER_UPDATE_RESPONSE:
             if (instance->con_interval_status != CP_CONNECTION_INTERVAL_STATUS_W4_L2CAP_RESPONSE) return;
             
-            // printf("L2CAP Connection Parameter Update Complete, response: %x\n", l2cap_event_connection_parameter_update_response_get_result(packet));
             if (l2cap_event_connection_parameter_update_response_get_result(packet) == ERROR_CODE_SUCCESS){
                 instance->con_interval_status = CP_CONNECTION_INTERVAL_STATUS_W4_UPDATE;
             } else {
@@ -966,6 +956,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 att_server_response_ready(l2cap_event_connection_parameter_update_response_get_handle(packet));
             }
             break;
+#endif
 
         case HCI_EVENT_DISCONNECTION_COMPLETE:{
             if (!instance) return;
@@ -978,7 +969,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             uint8_t event[5];
             int index = 0;
             event[index++] = HCI_EVENT_GATTSERVICE_META;
-            event[index++] = sizeof(event) - 2;
+            event[index++] = sizeof(event) - 2u;
             
             event[index++] = GATTSERVICE_SUBEVENT_CYCLING_POWER_BROADCAST_STOP;
             little_endian_store_16(event, index, con_handle);
@@ -1006,9 +997,12 @@ void cycling_power_service_server_init(uint32_t feature_flags,
     instance->con_interval_max = 6;
     instance->con_interval_status = CP_CONNECTION_INTERVAL_STATUS_NONE;
     instance->w4_indication_complete = 0;
+
     hci_event_callback_registration.callback = &packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
-    l2cap_register_packet_handler(&packet_handler);
+
+    l2cap_event_callback_registration.callback = &packet_handler;
+    l2cap_add_event_handler(&l2cap_event_callback_registration);
 
     instance->sensor_location = current_sensor_location;
     instance->num_supported_sensor_locations = 0;
@@ -1026,11 +1020,10 @@ void cycling_power_service_server_init(uint32_t feature_flags,
     // get service handle range
     uint16_t start_handle = 0;
     uint16_t end_handle   = 0xffff;
-    int service_found = gatt_server_get_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_CYCLING_POWER, &start_handle, &end_handle);
-    if (!service_found){
-        log_error("no service found\n");
-        return;
-    }
+    int service_found = gatt_server_get_handle_range_for_service_with_uuid16(ORG_BLUETOOTH_SERVICE_CYCLING_POWER, &start_handle, &end_handle);
+    btstack_assert(service_found != 0);
+	UNUSED(service_found);
+
     // get CP Mesurement characteristic value handle and client configuration handle
     instance->measurement_value_handle = gatt_server_get_value_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_CYCLING_POWER_MEASUREMENT);
     instance->measurement_client_configuration_descriptor_handle = gatt_server_get_client_configuration_handle_for_characteristic_with_uuid16(start_handle, end_handle, ORG_BLUETOOTH_CHARACTERISTIC_CYCLING_POWER_MEASUREMENT);
@@ -1083,8 +1076,9 @@ void cycling_power_service_server_add_wheel_revolution(int32_t wheel_revolution,
     cycling_power_t * instance = &cycling_power;
     instance->last_wheel_event_time_s = wheel_event_time_s;
     if (wheel_revolution < 0){
-        if (instance->cumulative_wheel_revolutions > -wheel_revolution){
-            instance->cumulative_wheel_revolutions += wheel_revolution;
+        uint32_t wheel_revolution_to_subtract = (uint32_t) (-wheel_revolution);
+        if (instance->cumulative_wheel_revolutions > wheel_revolution_to_subtract){
+            instance->cumulative_wheel_revolutions -= wheel_revolution_to_subtract;
         } else {
             instance->cumulative_wheel_revolutions = 0;
         } 
@@ -1105,12 +1099,11 @@ void cycling_power_service_server_add_crank_revolution(uint16_t crank_revolution
 
 void cycling_power_service_add_energy(uint16_t energy_kJ){
     cycling_power_t * instance = &cycling_power;
-    if (instance->accumulated_energy_kJ <= (0xffff - energy_kJ)){
+    if (instance->accumulated_energy_kJ <= (0xffffu - energy_kJ)){
         instance->accumulated_energy_kJ += energy_kJ;
     } else {
         instance->accumulated_energy_kJ = 0xffff;
     }
-    // printf("energy %d\n", instance->accumulated_energy_kJ);
 } 
 
 void cycling_power_service_server_set_instantaneous_power(int16_t instantaneous_power_watt){
@@ -1174,13 +1167,13 @@ void cycling_power_service_server_set_bottom_dead_spot_angle(uint16_t bottom_dea
 } 
 
 static int gatt_date_is_valid(gatt_date_time_t date){
-    if ((date.year != 0) && ((date.year < 1582) || (date.year > 9999))) return 0;
-    if ((date.month != 0) && (date.month > 12)) return 0;
-    if ((date.day != 0) && (date.day > 31)) return 0;
+    if ((date.year != 0u) && ((date.year < 1582u) || (date.year > 9999u))) return 0u;
+    if ((date.month != 0u) && (date.month > 12u)) return 0u;
+    if ((date.day != 0u) && (date.day > 31u)) return 0u;
 
-    if (date.hours > 23) return 0;
-    if (date.minutes > 59) return 0;
-    if (date.seconds > 59) return 0;
+    if (date.hours > 23u) return 0u;
+    if (date.minutes > 59u) return 0u;
+    if (date.seconds > 59u) return 0u;
     return 1;
 }
 
@@ -1232,7 +1225,6 @@ void cycling_power_service_server_packet_handler(btstack_packet_handler_t callba
 void cycling_power_server_calibration_done(cycling_power_sensor_measurement_context_t measurement_type, uint16_t calibrated_value){
     cycling_power_t * instance = &cycling_power;
     if (instance->response_value != CP_RESPONSE_VALUE_W4_VALUE_AVAILABLE){
-        // printf("cycling_power_server_calibration_done : CP_RESPONSE_VALUE_W4_VALUE_AVAILABLE con_handle 0x%02x\n", instance->con_handle);
         return;
     } 
     instance->response_value = CP_RESPONSE_VALUE_SUCCESS;

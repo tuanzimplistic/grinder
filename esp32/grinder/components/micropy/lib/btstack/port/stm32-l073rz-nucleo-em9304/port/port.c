@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -56,11 +56,19 @@
 #include "btstack_defines.h"
 #include "btstack_event.h"
 #include "btstack_memory.h"
+#include "btstack_ring_buffer.h"
 #include "hci_dump.h"
+#include "hci_transport.h"
+#include "hci_transport_h4.h"
+#include "hci_transport_em9304_spi.h"
 #include "btstack_debug.h"
+#include "btstack_chipset_em9301.h"
 
 #ifdef ENABLE_SEGGER_RTT
 #include "SEGGER_RTT.h"
+#include "hci_dump_segger_rtt_stdout.h"
+#else
+#include "hci_dump_embedded_stdout.h"
 #endif
 
 // retarget printf
@@ -196,7 +204,7 @@ static void (*rx_done_handler)(void) = &dummy_handler;
 static void (*tx_done_handler)(void) = &dummy_handler;
 
 static inline void hal_spi_em9304_trigger_run_loop(void){
-    btstack_run_loop_embedded_trigger();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 static inline int hal_spi_em9304_rdy(void){
@@ -477,7 +485,12 @@ void port_main(void){
     btstack_memory_init();
     btstack_run_loop_init(btstack_run_loop_embedded_get_instance());
 
-    // hci_dump_open( NULL, HCI_DUMP_STDOUT );
+    // uncomment to enable packet logger
+#ifdef ENABLE_SEGGER_RTT
+    // hci_dump_init(hci_dump_segger_rtt_stdout_get_instance());
+#else
+    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
+#endif
 
     // set up polling data_source
     btstack_run_loop_set_data_source_handler(&transport_data_source, &hal_spi_em9304_process);

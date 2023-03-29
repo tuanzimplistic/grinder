@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -42,6 +42,9 @@
 #include "btstack_run_loop_wiced.h"
 #include "btstack_link_key_db_wiced_dct.h"
 #include "le_device_db_wiced_dct.h"
+#include "hci_dump_embedded_stdout.h"
+#include "hci_transport.h"
+#include "hci_transport_h4.h"
 
 #include "generated_mac_address.txt"
 
@@ -105,7 +108,7 @@ void application_start(void){
     btstack_run_loop_init(btstack_run_loop_wiced_get_instance());
     
     // enable full log output while porting
-    // hci_dump_open(NULL, HCI_DUMP_STDOUT);
+    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
 
     // setup le device db storage -- not needed if used LE-only (-> start address == 0)
     le_device_db_wiced_dct_set_start_address(btstack_link_key_db_wiced_dct_get_storage_size());

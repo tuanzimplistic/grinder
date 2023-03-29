@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "ublox_spp_le_counter.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(ublox_le_counter): LE Peripheral - Nordic SPP-like profile
+/* EXAMPLE_START(ublox_spp_le_counter): LE u-blox SPP-like Heartbeat Server
  *
  */
  // *****************************************************************************
@@ -106,7 +106,7 @@ static int  counter_string_len;
 
 static void beat(void){
     counter++;
-    counter_string_len = sprintf(counter_string, "BTstack counter %03u", counter);
+    counter_string_len = snprintf(counter_string, sizeof(counter_string), "BTstack counter %03u", counter);
 }
 
 static void ublox_can_send(void * context){
@@ -126,24 +126,33 @@ static void heartbeat_handler(struct btstack_timer_source *ts){
 } 
 /* LISTING_END */
 
-static void ublox_data(hci_con_handle_t handle, const uint8_t * data, uint16_t size){
-    if (size == 0 && con_handle == HCI_CON_HANDLE_INVALID ){
-        con_handle = handle;
-        printf("Connected with handle 0x%04x\n", con_handle);        
-    } else {
-        printf("RECV: ");
-        printf_hexdump(data, size);
+static void ublox_spp_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
+    UNUSED(channel);
+    switch (packet_type){
+        case HCI_EVENT_PACKET:
+            if (hci_event_packet_get_type(packet) != HCI_EVENT_GATTSERVICE_META) break;
+            switch (hci_event_gattservice_meta_get_subevent_code(packet)){
+                case GATTSERVICE_SUBEVENT_SPP_SERVICE_CONNECTED:
+                    con_handle = gattservice_subevent_spp_service_connected_get_con_handle(packet);
+                    printf("Connected with handle 0x%04x\n", con_handle);
+                    break;
+                case GATTSERVICE_SUBEVENT_SPP_SERVICE_DISCONNECTED:
+                    con_handle = HCI_CON_HANDLE_INVALID;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case RFCOMM_DATA_PACKET:
+            printf("RECV: ");
+            printf_hexdump(packet, size);
+            break;
+        default:
+            break;
     }
 }
 
-static void ublox_flow_control(hci_con_handle_t handle, uint16_t credits){
-    if (con_handle == HCI_CON_HANDLE_INVALID ){
-        con_handle = handle;
-        printf("Connected with handle 0x%04x\n", handle);        
-    }
-    printf("credits %d\n", credits);
-}
-/* 
+/*
  * @section Packet Handler
  *
  * @text The packet handler is used to:
@@ -165,6 +174,8 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
                     break;
             }
             break;
+        default:
+            break;
     }
 }
 /* LISTING_END */
@@ -179,9 +190,6 @@ int btstack_main(void)
 
     l2cap_init();
 
-    // setup LE device DB
-    le_device_db_init();
-
     // setup SM: Display only
     sm_init();
 
@@ -190,7 +198,7 @@ int btstack_main(void)
     // setup device information service
     device_information_service_server_init();
     // setup Nordic SPP service
-    ublox_spp_service_server_init(&ublox_data, &ublox_flow_control);
+    ublox_spp_service_server_init(&ublox_spp_packet_handler);
 
     // setup advertisements
     uint16_t adv_int_min = 0x0030;

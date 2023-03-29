@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -198,7 +198,9 @@ void hal_uart_dma_receive_block(uint8_t *data, uint16_t size){
 #include "hci.h"
 #include "hci_cmd.h"
 #include "hci_dump.h"
+#include "hci_dump_embedded_stdout.h"
 #include "hci_transport.h"
+#include "hci_transport_h4.h"
 #include "btstack_memory.h"
 #include "ble/le_device_db_tlv.h"
 #include "classic/btstack_link_key_db_tlv.h"
@@ -216,7 +218,7 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
             printf("BTstack up and running on %s.\n", bd_addr_to_str(local_addr));
             break;
         case HCI_EVENT_COMMAND_COMPLETE:
-            if (HCI_EVENT_IS_COMMAND_COMPLETE(packet, hci_read_local_version_information)){
+            if (hci_event_command_complete_get_command_opcode(packet) == HCI_OPCODE_HCI_READ_LOCAL_VERSION_INFORMATION){
                 uint16_t manufacturer   = little_endian_read_16(packet, 10);
                 uint16_t lmp_subversion = little_endian_read_16(packet, 12);
                 // assert manufacturer is TI
@@ -250,7 +252,7 @@ static hal_flash_bank_synergy_t  hal_flash_bank_context;
 static const hci_transport_config_uart_t config = {
     HCI_TRANSPORT_CONFIG_UART,
     115200,
-    4000000,
+    2000000,
     1,
     NULL
 };
@@ -270,7 +272,8 @@ void hal_entry(void) {
     btstack_memory_init();
     btstack_run_loop_init(btstack_run_loop_embedded_get_instance());
 
-    hci_dump_open( NULL, HCI_DUMP_STDOUT );
+    // enable HCI logging
+    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
 
     // init HCI
     hci_init(hci_transport_h4_instance(btstack_uart_block_embedded_instance()), (void*) &config);

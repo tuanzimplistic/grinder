@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "spp_flowcontrol.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(spp_flowcontrol): SPP Server - Flow Control
+/* EXAMPLE_START(spp_flowcontrol): SPP Server - RFCOMM Flow Control
  *
  * @text This example adds explicit flow control for incoming RFCOMM data to the 
  * SPP heartbeat counter example. We will highlight the changes compared to the 
@@ -142,14 +142,6 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
     switch (packet_type) {
         case HCI_EVENT_PACKET:
             switch (hci_event_packet_get_type(packet)) {
-                                    
-                case HCI_EVENT_COMMAND_COMPLETE:
-                    if (HCI_EVENT_IS_COMMAND_COMPLETE(packet, hci_read_bd_addr)){
-                        reverse_bd_addr(&packet[6], event_addr);
-                        printf("BD-ADDR: %s\n\r", bd_addr_to_str(event_addr));
-                        break;
-                    }
-                    break;
 
                 case HCI_EVENT_PIN_CODE_REQUEST:
                     // inform about pin code request
@@ -159,8 +151,7 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
                     break;
                 
                 case RFCOMM_EVENT_INCOMING_CONNECTION:
-                    // data: event (8), len(8), address(48), channel (8), rfcomm_cid (16)
-                    rfcomm_event_incoming_connection_get_bd_addr(packet, event_addr); 
+                    rfcomm_event_incoming_connection_get_bd_addr(packet, event_addr);
                     rfcomm_channel_nr = rfcomm_event_incoming_connection_get_server_channel(packet);
                     rfcomm_channel_id = rfcomm_event_incoming_connection_get_rfcomm_cid(packet);
                     printf("RFCOMM channel %u requested for %s\n", rfcomm_channel_nr, bd_addr_to_str(event_addr));
@@ -168,7 +159,6 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
                     break;
                
                 case RFCOMM_EVENT_CHANNEL_OPENED:
-                    // data: event(8), len(8), status (8), address (48), server channel(8), rfcomm_cid(16), max frame size(16)
                     if (rfcomm_event_channel_opened_get_status(packet)) {
                         printf("RFCOMM channel open failed, status %u\n", rfcomm_event_channel_opened_get_status(packet));
                     } else {
@@ -209,6 +199,13 @@ int btstack_main(int argc, const char * argv[]){
     
     (void)argc;
     (void)argv;
+
+    l2cap_init();
+
+#ifdef ENABLE_BLE
+    // Initialize LE Security Manager. Needed for cross-transport key derivation
+    sm_init();
+#endif
 
     spp_service_setup();
     one_shot_timer_setup();

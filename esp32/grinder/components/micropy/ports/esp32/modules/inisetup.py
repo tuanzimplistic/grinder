@@ -42,8 +42,9 @@ def setup():
 # This file is executed on every boot (including wake-boot from deepsleep)
 #import esp
 #esp.osdebug(None)
-#import webrepl
+import webrepl
 #webrepl.start()
+webrepl.start(password='mypass')
 """
         )
     return vfs

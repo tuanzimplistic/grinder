@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -48,7 +48,7 @@
 
 // NVM_NUM_LINK_KEYS defines number of stored link keys
 #ifndef NVM_NUM_LINK_KEYS
-#define NVM_NUM_LINK_KEYS 1
+#error "Please set NVM_NUM_LINK_KEYS in btstack_config.h - number of link keys that can be stored in TLV"
 #endif
 
 typedef struct {
@@ -92,7 +92,7 @@ static int btstack_link_key_db_tlv_get_link_key(bd_addr_t bd_addr, link_key_t li
         uint32_t tag = btstack_link_key_db_tag_for_index(i);
         int size = self->btstack_tlv_impl->get_tag(self->btstack_tlv_context, tag, (uint8_t*) &entry, sizeof(entry));
         if (size == 0) continue;
-        log_info("tag %x, addr %s", tag, bd_addr_to_str(entry.bd_addr));
+        log_info("tag %x, addr %s", (unsigned int) tag, bd_addr_to_str(entry.bd_addr));
         if (memcmp(bd_addr, entry.bd_addr, 6)) continue;
         // found, pass back
         (void)memcpy(link_key, entry.link_key, 16);
@@ -148,7 +148,8 @@ static void btstack_link_key_db_tlv_put_link_key(bd_addr_t bd_addr, link_key_t l
         }
     }
 
-    log_info("tag_for_addr %x, tag_for_empy %x, tag_for_lowest_seq_nr %x", tag_for_addr, tag_for_empty, tag_for_lowest_seq_nr);
+    log_info("tag_for_addr %x, tag_for_empy %x, tag_for_lowest_seq_nr %x",
+             (unsigned int) tag_for_addr, (unsigned int) tag_for_empty, (unsigned int) tag_for_lowest_seq_nr);
 
     uint32_t tag_to_use = 0;
     if (tag_for_addr){
@@ -162,7 +163,7 @@ static void btstack_link_key_db_tlv_put_link_key(bd_addr_t bd_addr, link_key_t l
         return;
     }
 
-    log_info("store with tag %x", tag_to_use);
+    log_info("store with tag %x", (unsigned int) tag_to_use);
 
     link_key_nvm_t entry;
     
@@ -183,7 +184,7 @@ static int btstack_link_key_db_tlv_iterator_init(btstack_link_key_iterator_t * i
 }
 
 static int  btstack_link_key_db_tlv_iterator_get_next(btstack_link_key_iterator_t * it, bd_addr_t bd_addr, link_key_t link_key, link_key_type_t * link_key_type){
-    uintptr_t i = (uintptr_t) it->context;
+    uint8_t i = (uint8_t)(uintptr_t) it->context;
     int found = 0;
     while (i<NVM_NUM_LINK_KEYS){
         link_key_nvm_t entry;
@@ -196,7 +197,7 @@ static int  btstack_link_key_db_tlv_iterator_get_next(btstack_link_key_iterator_
         found = 1;
         break;
     }
-    it->context = (void*) i;
+    it->context = (void*)(uintptr_t) i;
     return found;
 }
 

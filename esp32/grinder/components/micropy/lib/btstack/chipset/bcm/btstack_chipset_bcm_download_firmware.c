@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -134,7 +134,7 @@ static void bcm_send_next_init_script_command(void){
  * @param done callback. 0 = Success
  */
 
-void btstack_chipset_bcm_download_firmware(const btstack_uart_block_t * the_uart_driver, int baudrate_upload, void (*done)(int result)){
+void btstack_chipset_bcm_download_firmware_with_uart(const btstack_uart_t * the_uart_driver, int baudrate_upload, void (*done)(int result)){
     // 
     uart_driver = the_uart_driver;
     chipset     = btstack_chipset_bcm_instance();
@@ -150,4 +150,7 @@ void btstack_chipset_bcm_download_firmware(const btstack_uart_block_t * the_uart
     }
 
     bcm_send_hci_reset();
+}
+void btstack_chipset_bcm_download_firmware(const btstack_uart_block_t * the_uart_driver, int baudrate_upload, void (*done)(int result)) {
+    btstack_chipset_bcm_download_firmware_with_uart((const btstack_uart_t *) the_uart_driver, baudrate_upload, done);
 }

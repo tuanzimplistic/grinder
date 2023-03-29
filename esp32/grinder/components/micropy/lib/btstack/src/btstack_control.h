@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,10 +35,10 @@
  *
  */
 
-/*
- *  btstack_control.h
+/**
+ * @title Bluetooth Power Control
  *
- *  BTstack Bluetooth Hardware Control API -- allows HCI to manage Bluetooth chipsets via direct hardware controls
+ * The Bluetooth Hardware Control API allows HCI to manage Bluetooth chipsets via direct hardware controls.
  *
  */
 
@@ -57,6 +57,8 @@ typedef enum {
     POWER_WILL_WAKE_UP
 } POWER_NOTIFICATION_t;
 
+/* API_START */
+
 typedef struct {
 	void (*init) (const void *config);
     int  (*on)   (void);  // <-- turn BT module on and configure
@@ -65,6 +67,8 @@ typedef struct {
     int  (*wake) (void);  // <-- wake BT module from sleep - only to be called after SLEEP
     void (*register_for_power_notifications)(void (*cb)(POWER_NOTIFICATION_t event));
 } btstack_control_t;
+
+/* API_END */
 
 #if defined __cplusplus
 }

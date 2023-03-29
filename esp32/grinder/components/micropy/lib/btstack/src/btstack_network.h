@@ -34,9 +34,9 @@
  *
  */
 
-/*
- *  btstack_network.h
- *  Network interface abstraction
+/**
+ * @title Network Interface
+ *
  */
 
 #ifndef BTSTACK_NETWORK_H
@@ -48,6 +48,8 @@
 #if defined __cplusplus
 extern "C" {
 #endif
+
+/* API_START */
 
 /**
  * @brief Initialize network interface
@@ -84,9 +86,11 @@ void btstack_network_packet_sent(void);
 /**
  * @brief Get network name after network was activated
  * @note e.g. tapX on Linux, might not be useful on all platforms
- * @returns network name
+ * @return network name
  */
 const char * btstack_network_get_name(void);
+
+/* API_END */
 
 #if defined __cplusplus
 }

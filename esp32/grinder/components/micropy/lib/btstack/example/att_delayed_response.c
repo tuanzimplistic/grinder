@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -100,9 +100,6 @@ const char * test_string = "Delayed response";
 static void example_setup(void){
 
     l2cap_init();
-
-    // setup le device db
-    le_device_db_init();
 
     // setup SM: Display only
     sm_init();
@@ -205,7 +202,7 @@ static uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t a
     // useless code when ENABLE_ATT_DELAYED_RESPONSE is not defined - but avoids built errors
     if (att_handle == ATT_CHARACTERISTIC_0000FF11_0000_1000_8000_00805F9B34FB_01_VALUE_HANDLE){
         printf("ENABLE_ATT_DELAYED_RESPONSE not defined in btstack_config.h, responding right away");
-        return att_read_callback_handle_blob((const uint8_t *)test_string, strlen(test_string), offset, buffer, buffer_size);
+        return att_read_callback_handle_blob((const uint8_t *)test_string, (uint16_t) strlen(test_string), offset, buffer, buffer_size);
     }
 #endif
 

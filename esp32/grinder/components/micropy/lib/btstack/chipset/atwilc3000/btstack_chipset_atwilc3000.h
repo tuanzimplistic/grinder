@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -50,6 +50,7 @@ extern "C" {
 #endif
 
 #include "btstack_chipset.h"
+#include "btstack_uart.h"
 #include "btstack_uart_block.h"
 
 #define HCI_DEFAULT_BAUDRATE 115200
@@ -60,11 +61,21 @@ extern "C" {
 const btstack_chipset_t * btstack_chipset_atwilc3000_instance(void);
 
 /**
- * @brief Download firmware via uart_driver
+ * @brief Download firmware via btstack_uart_t implementation
  * @param uart_driver -- already initialized
  * @param baudrate for firmware update
  * @param flowcontrol after firmwware update
  * @param done callback. 0 = Success
+ */
+void btstack_chipset_atwilc3000_download_firmware_with_uart(const btstack_uart_t * uart_driver, uint32_t baudrate, int flowcontrol, const uint8_t * fw, uint32_t fw_size, void (*done)(int result));
+
+/**
+ * @brief Download firmware via btstack_uart_block_t implementation
+ * @param uart_driver -- already initialized
+ * @param baudrate for firmware update
+ * @param flowcontrol after firmwware update
+ * @param done callback. 0 = Success
+ * @deprecated please use btstack_chipset_atwilc3000_download_firmware_with_uart instead
  */
 void btstack_chipset_atwilc3000_download_firmware(const btstack_uart_block_t * uart_driver, uint32_t baudrate, int flowcontrol, const uint8_t * fw, uint32_t fw_size, void (*done)(int result));
 

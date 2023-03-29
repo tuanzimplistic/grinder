@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -41,6 +41,8 @@
 #include "mesh/mesh_foundation.h"
 
 #include "mesh/mesh_node.h"
+
+#include "btstack_util.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -155,11 +157,11 @@ uint16_t mesh_access_get_element_address(mesh_model_t * mesh_model){
 // Model Identifier utilities
 
 uint32_t mesh_model_get_model_identifier(uint16_t vendor_id, uint16_t model_id){
-    return (vendor_id << 16) | model_id;
+    return (((uint32_t) vendor_id << 16)) | model_id;
 }
 
 uint32_t mesh_model_get_model_identifier_bluetooth_sig(uint16_t model_id){
-    return (BLUETOOTH_COMPANY_ID_BLUETOOTH_SIG_INC << 16) | model_id;
+    return ((uint32_t) BLUETOOTH_COMPANY_ID_BLUETOOTH_SIG_INC << 16) | model_id;
 }
 
 uint16_t mesh_model_get_model_id(uint32_t model_identifier){
@@ -275,12 +277,12 @@ uint8_t mesh_heartbeat_count_log(uint16_t value){
     if (value == 0xffff) return 0xff;
     // count leading zeros, supported by clang and gcc
     // note: CountLog(8) == CountLog(7) = 3
-    return 33 - __builtin_clz(value - 1);
+    return 33 - btstack_clz(value - 1);
 }
 
 uint8_t mesh_heartbeat_period_log(uint16_t value){
     if (value == 0)      return 0x00;
     // count leading zeros, supported by clang and gcc
     // note: PeriodLog(8) == PeriodLog(7) = 3
-    return 33 - __builtin_clz(value - 1);
+    return 33 - btstack_clz(value - 1);
 }

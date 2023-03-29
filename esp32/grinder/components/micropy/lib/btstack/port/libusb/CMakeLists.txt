@@ -1,17 +1,63 @@
 cmake_minimum_required (VERSION 3.5)
-project(BTstack)
 
-# add libusb
-find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h PATH_SUFFIXES "include" "libusb" "libusb-1.0")
-find_library(LIBUSB_LIBRARY NAMES usb-1.0 PATH_SUFFIXES "lib" "lib32" "lib64" "dylib")
-get_filename_component(LIBUSB_LIBRARY_PATH ${LIBUSB_LIBRARY} DIRECTORY)
-include_directories( ${LIBUSB_INCLUDE_DIR} )
-link_directories( ${LIBUSB_LIBRARY_PATH} )
-link_libraries( usb-1.0 )
+SET(CMAKE_OSX_SYSROOT /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk)
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+project(BTstack-libusb)
+
+SET(BTSTACK_ROOT ${CMAKE_SOURCE_DIR}/../..)
+
+# pkgconfig
+find_package(PkgConfig REQUIRED)
+
+
+# libusb
+pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
+include_directories(${LIBUSB_INCLUDE_DIRS})
+link_directories(${LIBUSB_LIBRARY_DIRS})
+link_libraries(${LIBUSB_LIBRARIES})
+
+
+# portaudio
+pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+if(PORTAUDIO_FOUND)
+	message("HAVE_PORTAUDIO")
+	include_directories(${PORTAUDIO_INCLUDE_DIRS})
+	link_directories(${PORTAUDIO_LIBRARY_DIRS})
+	link_libraries(${PORTAUDIO_LIBRARIES})
+	# CMake 3.12 - add_compile_definitions(HAVE_PORTAUDIO)
+	SET(CMAKE_C_FLAGS  "-DHAVE_PORTAUDIO")
+endif()
+
+# pthread
+find_package(Threads)
+link_libraries(${CMAKE_THREAD_LIBS_INIT})
+
+
+# extra compiler warnings
+if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang.*")
+	# using Clang
+	SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wunused-variable -Wswitch-default -Werror")
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+	# using GCC
+	SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wunused-but-set-variable -Wunused-variable -Wswitch-default -Werror")
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
+	# using Intel C++
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+	# using Visual Studio C++
+endif()
+
+# to generate .h from .gatt files
+find_package (Python REQUIRED COMPONENTS Interpreter)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+# local dir for btstack_config.h after build dir to avoid using .h from Makefile
+include_directories(.)
 
 include_directories(../../3rd-party/micro-ecc)
 include_directories(../../3rd-party/bluedroid/decoder/include)
 include_directories(../../3rd-party/bluedroid/encoder/include)
+include_directories(../../3rd-party/lc3-google/include)
 include_directories(../../3rd-party/md5)
 include_directories(../../3rd-party/hxcmod-player)
 include_directories(../../3rd-party/hxcmod-player/mod)
@@ -21,12 +67,12 @@ include_directories(../../3rd-party/rijndael)
 include_directories(../../3rd-party/yxml)
 include_directories(../../3rd-party/tinydir)
 include_directories(../../src)
+include_directories(../../chipset/realtek)
 include_directories(../../chipset/zephyr)
 include_directories(../../platform/posix)
 include_directories(../../platform/embedded)
 include_directories(../../platform/lwip)
 include_directories(../../platform/lwip/port)
-include_directories(.)
 
 file(GLOB SOURCES_SRC       "../../src/*.c" "../../example/sco_demo_util.c")
 file(GLOB SOURCES_BLE       "../../src/ble/*.c")
@@ -42,6 +88,8 @@ file(GLOB SOURCES_RIJNDAEL  "../../3rd-party/rijndael/rijndael.c")
 file(GLOB SOURCES_POSIX     "../../platform/posix/*.c")
 file(GLOB SOURCES_LIBUSB    "../../port/libusb/*.c" "../../platform/libusb/*.c")
 file(GLOB SOURCES_ZEPHYR    "../../chipset/zephyr/*.c")
+file(GLOB SOURCES_REALTEK   "../../chipset/realtek/*.c")
+file(GLOB SOURCES_LC3_GOOGLE "../../3rd-party/lc3-google/src/*.c")
 
 set(LWIP_CORE_SRC 
 	../../3rd-party/lwip/core/src/core/def.c
@@ -85,6 +133,9 @@ set (LWIP_PORT
 
 set (SOURCES_LWIP ${LWIP_CORE_SRC} ${LWIP_IPV4_SRC} ${LWIP_NETIF_SRC} ${LWIP_HTTPD} ${LWIP_DHCPD} ${LWIP_PORT})
 
+file(GLOB SOURCES_SRC_OFF "../../src/hci_transport_*.c")
+list(REMOVE_ITEM SOURCES_SRC   ${SOURCES_SRC_OFF})
+
 file(GLOB SOURCES_BLE_OFF "../../src/ble/le_device_db_memory.c")
 list(REMOVE_ITEM SOURCES_BLE   ${SOURCES_BLE_OFF})
 
@@ -98,6 +149,7 @@ set(SOURCES
 	${SOURCES_POSIX}
 	${SOURCES_RIJNDAEL}
 	${SOURCES_LIBUSB}
+	${SOURCES_LC3_GOOGLE}
 	${SOURCES_SRC}
 	${SOURCES_BLE}
 	${SOURCES_GATT}
@@ -105,6 +157,7 @@ set(SOURCES
 	${SOURCES_CLASSIC} 
 	${SOURCES_UECC}
 	${SOURCES_HXCMOD}
+	${SOURCES_REALTEK}
 	${SOURCES_ZEPHYR}
 )
 list(SORT SOURCES)
@@ -128,11 +181,13 @@ set (LWIP_EXAMPLES pan_lwip_http_server)
 # create targets
 foreach(EXAMPLE_FILE ${EXAMPLES_C})
 	get_filename_component(EXAMPLE ${EXAMPLE_FILE} NAME_WE)
-	set (SOURCE_FILES ${EXAMPLE_FILE})
+
+	# get c file
+	set (SOURCES_EXAMPLE ${BTSTACK_ROOT}/example/${EXAMPLE}.c)
 
 	# add lwip sources for lwip examples
 	if ( "${LWIP_EXAMPLES}" MATCHES ${EXAMPLE} )
-		list(APPEND SOURCE_FILES ${SOURCES_LWIP})
+		list(APPEND SOURCES_EXAMPLE ${SOURCES_LWIP})
 	endif()
 
 	# add GATT DB creation
@@ -140,13 +195,14 @@ foreach(EXAMPLE_FILE ${EXAMPLES_C})
 		message("example ${EXAMPLE} -- with GATT DB")
 		add_custom_command(
 		    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${EXAMPLE}.h
-			COMMAND ${CMAKE_SOURCE_DIR}/../../tool/compile_gatt.py
-			ARGS ${CMAKE_SOURCE_DIR}/../../example/${EXAMPLE}.gatt ${CMAKE_CURRENT_BINARY_DIR}/${EXAMPLE}.h
+			DEPENDS ${BTSTACK_ROOT}/example/${EXAMPLE}.gatt
+			COMMAND ${Python_EXECUTABLE}
+			ARGS ${BTSTACK_ROOT}/tool/compile_gatt.py ${BTSTACK_ROOT}/example/${EXAMPLE}.gatt ${CMAKE_CURRENT_BINARY_DIR}/${EXAMPLE}.h
 		)
-		list(APPEND SOURCE_FILES ${CMAKE_CURRENT_BINARY_DIR}/${EXAMPLE}.h)
+		list(APPEND SOURCES_EXAMPLE ${CMAKE_CURRENT_BINARY_DIR}/${EXAMPLE}.h)
 	else()
 		message("example ${EXAMPLE}")
 	endif()
-	add_executable(${EXAMPLE} ${SOURCE_FILES} )
+	add_executable(${EXAMPLE} ${SOURCES_EXAMPLE} )
 	target_link_libraries(${EXAMPLE} btstack)
 endforeach(EXAMPLE_FILE)

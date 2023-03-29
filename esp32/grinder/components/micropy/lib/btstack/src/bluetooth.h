@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -75,6 +75,14 @@ typedef uint8_t bd_addr_t[BD_ADDR_LEN];
     BD_ADDR_TYPE_UNKNOWN   = 0xfe,  // also used as 'invalid'
 } bd_addr_type_t;
 
+/**
+ * Link types for BR/EDR Connections
+ */
+typedef enum {
+    HCI_LINK_TYPE_SCO  = 0,
+    HCI_LINK_TYPE_ACL  = 1,
+    HCI_LINK_TYPE_ESCO = 2,
+} hci_link_type_t;
 
 
 /**
@@ -88,6 +96,7 @@ typedef uint8_t link_key_t[LINK_KEY_LEN];
  * @brief link key type
  */
 typedef enum {
+  INVALID_LINK_KEY = 0xffff,
   COMBINATION_KEY = 0,  // standard pairing
   LOCAL_UNIT_KEY,     // ?
   REMOTE_UNIT_KEY,    // ?
@@ -100,6 +109,11 @@ typedef enum {
 } link_key_type_t;
 
 /**
+ * @brief Extended Inquiry Response
+ */
+#define EXTENDED_INQUIRY_RESPONSE_DATA_LEN 240
+
+/**
  * @brief Inquiry modes
  */
 typedef enum {
@@ -108,6 +122,36 @@ typedef enum {
   INQUIRY_MODE_RSSI_AND_EIR,
 } inquiry_mode_t;
 
+/**
+ * @brief Page Scan Types
+ */
+typedef enum {
+    PAGE_SCAN_MODE_STANDARD = 0,
+    PAGE_SCAN_MODE_INTERLACED,
+} page_scan_type_t;
+
+/**
+ * @brief Inquiry Scan Types
+ */
+typedef enum {
+    INQUIRY_SCAN_MODE_STANDARD = 0,
+    INQUIRY_SCAN_MODE_INTERLACED,
+} inquiry_scan_type_t;
+
+/**
+ * Link Supervision Timeout Default, 0x7d00 * 0.625ms = 20s
+ */
+#define HCI_LINK_SUPERVISION_TIMEOUT_DEFAULT 0x7D00
+
+/**
+ * Service Type used for QoS Setup and Flow Specification
+ */
+typedef enum {
+    HCI_SERVICE_TYPE_NO_TRAFFIC = 0,
+    HCI_SERVICE_TYPE_BEST_EFFORT,
+    HCI_SERVICE_TYPE_GUARANTEED,
+    HCI_SERVICE_TYPE_INVALID,
+} hci_service_type_t;
 
 /**
  * HCI Transport 
@@ -120,6 +164,7 @@ typedef enum {
 #define HCI_ACL_DATA_PACKET     0x02
 #define HCI_SCO_DATA_PACKET     0x03
 #define HCI_EVENT_PACKET        0x04
+#define HCI_ISO_DATA_PACKET     0x05
 
 /** 
  * HCI Layer
@@ -226,12 +271,15 @@ typedef enum {
 #define L2CAP_DATA_LEN_EXCEEDS_REMOTE_MTU                  0x6C
 #define L2CAP_SERVICE_DOES_NOT_EXIST                       0x6D
 #define L2CAP_LOCAL_CID_DOES_NOT_EXIST                     0x6E
-    
+#define L2CAP_CONNECTION_RESPONSE_UNKNOWN_ERROR            0x6F
+
 #define RFCOMM_MULTIPLEXER_STOPPED                         0x70
 #define RFCOMM_CHANNEL_ALREADY_REGISTERED                  0x71
 #define RFCOMM_NO_OUTGOING_CREDITS                         0x72
 #define RFCOMM_AGGREGATE_FLOW_OFF                          0x73
 #define RFCOMM_DATA_LEN_EXCEEDS_MTU                        0x74
+
+#define HFP_REMOTE_REJECTS_AUDIO_CONNECTION                0x7F
 
 #define SDP_HANDLE_ALREADY_REGISTERED                      0x80
 #define SDP_QUERY_INCOMPLETE                               0x81
@@ -261,13 +309,7 @@ typedef enum {
 #define OBEX_DISCONNECTED                                  0xB2
 #define OBEX_NOT_FOUND                                     0xB3
 #define OBEX_NOT_ACCEPTABLE                                0xB4
-
-#define AVDTP_SEID_DOES_NOT_EXIST                          0xC0
-#define AVDTP_CONNECTION_DOES_NOT_EXIST                    0xC1
-#define AVDTP_CONNECTION_IN_WRONG_STATE                    0xC2
-#define AVDTP_STREAM_ENDPOINT_IN_WRONG_STATE               0xC3
-#define AVDTP_STREAM_ENDPOINT_DOES_NOT_EXIST               0xC4
-#define AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST              0xC5 
+#define OBEX_ABORTED                                       0xB5
 
 #define MESH_ERROR_APPKEY_INDEX_INVALID                    0xD0
 /* ENUM_END */
@@ -301,8 +343,11 @@ typedef enum {
 /* ENUM_END */
 
 // HCI roles
-#define HCI_ROLE_MASTER 0
-#define HCI_ROLE_SLAVE  1
+typedef enum {
+    HCI_ROLE_MASTER = 0,
+    HCI_ROLE_SLAVE  = 1,
+    HCI_ROLE_INVALID = 0xff,
+} hci_role_t;
 
 // packet sizes (max payload)
 #define HCI_ACL_DM1_SIZE            17
@@ -319,6 +364,26 @@ typedef enum {
 #define HCI_ACL_3DH5_SIZE         1021
        
 #define LE_ADVERTISING_DATA_SIZE    31
+#define LE_EXTENDED_ADVERTISING_MAX_HANDLE 0xEFu
+#define LE_EXTENDED_ADVERTISING_MAX_CHUNK_LEN 251
+
+// advertising event properties for extended advertising
+#define LE_ADVERTISING_PROPERTIES_CONNECTABLE      (1u<<0)
+#define LE_ADVERTISING_PROPERTIES_SCANNABLE        (1u<<1)
+#define LE_ADVERTISING_PROPERTIES_DIRECTED         (1u<<2)
+#define LE_ADVERTISING_PROPERTIES_HIGH_DUTY_CYCLE  (1u<<3)
+#define LE_ADVERTISING_PROPERTIES_LEGACY           (1u<<4)
+#define LE_ADVERTISING_PROPERTIES_ANONYMOUS        (1u<<5)
+#define LE_ADVERTISING_PROPERTIES_INCLUDE_TX_POWER (1u<<6)
+
+
+// SCO Packet Types
+#define SCO_PACKET_TYPES_NONE  0x0000
+#define SCO_PACKET_TYPES_HV1   0x0001
+#define SCO_PACKET_TYPES_HV3   0x0004
+#define SCO_PACKET_TYPES_EV3   0x0008
+#define SCO_PACKET_TYPES_2EV3  0x0040
+#define SCO_PACKET_TYPES_ALL   0x03FF
 
 // Link Policy Settings
 #define LM_LINK_POLICY_DISABLE_ALL_LM_MODES  0
@@ -402,6 +467,62 @@ typedef enum {
 #define L2CAP_CID_ATTRIBUTE_PROTOCOL               0x0004
 #define L2CAP_CID_SIGNALING_LE                     0x0005
 #define L2CAP_CID_SECURITY_MANAGER_PROTOCOL        0x0006
+#define L2CAP_CID_BR_EDR_SECURITY_MANAGER          0x0007
+
+// L2CAP Channels in Basic and Enhanced Retransmission Mode
+
+// connection response result
+#define L2CAP_CONNECTION_RESULT_SUCCESS                         0x0000
+#define L2CAP_CONNECTION_RESULT_PENDING                         0x0001
+#define L2CAP_CONNECTION_RESULT_PSM_NOT_SUPPORTED               0x0002
+#define L2CAP_CONNECTION_RESULT_SECURITY_BLOCK                  0x0003
+#define L2CAP_CONNECTION_RESULT_NO_RESOURCES_AVAILABLE          0x0004
+#define L2CAP_CONNECTION_RESULT_INVALID_SOURCE_CID              0x0006
+#define L2CAP_CONNECTION_RESULT_SOURCE_CID_ALREADY_ALLOCATED    0x0007
+
+// L2CAP Channels in LE Credit-Based Flow-Control Mode
+
+// connection response result
+#define L2CAP_CBM_CONNECTION_RESULT_SUCCESS                         0x0000
+#define L2CAP_CBM_CONNECTION_RESULT_SPSM_NOT_SUPPORTED              0x0002
+#define L2CAP_CBM_CONNECTION_RESULT_NO_RESOURCES_AVAILABLE          0x0004
+#define L2CAP_CBM_CONNECTION_RESULT_INSUFFICIENT_AUTHENTICATION     0x0005
+#define L2CAP_CBM_CONNECTION_RESULT_INSUFFICIENT_AUTHORIZATION      0x0006
+#define L2CAP_CBM_CONNECTION_RESULT_ENCYRPTION_KEY_SIZE_TOO_SHORT   0x0007
+#define L2CAP_CBM_CONNECTION_RESULT_INSUFFICIENT_ENCRYPTION         0x0008
+#define L2CAP_CBM_CONNECTION_RESULT_INVALID_SOURCE_CID              0x0009
+#define L2CAP_CBM_CONNECTION_RESULT_SOURCE_CID_ALREADY_ALLOCATED    0x000A
+#define L2CAP_CBM_CONNECTION_RESULT_UNACCEPTABLE_PARAMETERS         0x000B
+
+
+// L2CAP Channels in Enhanced Credit-Based Flow-Control Mode
+
+// number of CIDs in single connection+reconfiguration request/response
+#define L2CAP_ECBM_MAX_CID_ARRAY_SIZE        5
+
+// connection response result
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_SUCCESS                                    0x0000
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_SPSM_NOT_SUPPORTED                 0x0002
+#define L2CAP_ECBM_CONNECTION_RESULT_SOME_REFUSED_INSUFFICIENT_RESOURCES_AVAILABLE  0x0004
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_INSUFFICIENT_AUTHENTICATION        0x0005
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_INSUFFICIENT_AUTHORIZATION         0x0006
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_ENCYRPTION_KEY_SIZE_TOO_SHORT      0x0007
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_INSUFFICIENT_ENCRYPTION            0x0008
+#define L2CAP_ECBM_CONNECTION_RESULT_SOME_REFUSED_INVALID_SOURCE_CID                0x0009
+#define L2CAP_ECBM_CONNECTION_RESULT_SOME_REFUSED_SOURCE_CID_ALREADY_ALOCATED       0x000A
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_UNACCEPTABLE_PARAMETERS            0x000B
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_REFUSED_INVALID_PARAMETERS                 0x000C
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_PENDING_NO_FURTHER_INFORMATION             0x000D
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_PENDING_AUTHENTICATION                     0x000E
+#define L2CAP_ECBM_CONNECTION_RESULT_ALL_PENDING_AUTHORIZATION                      0x000F
+
+
+// Result for Reconfigure Request
+#define L2CAP_ECBM_RECONFIGURE_SUCCESS                                 0
+#define L2CAP_ECBM_RECONFIGURE_FAILED_MTU_REDUCTION_NOT_ALLOWED        1
+#define L2CAP_ECBM_RECONFIGURE_FAILED_MPS_REDUCTION_MULTIPLE_CHANNELS  2
+#define L2CAP_ECBM_RECONFIGURE_FAILED_DESTINATION_CID_INVALID          3
+#define L2CAP_ECBM_RECONFIGURE_FAILED_UNACCEPTABLE_PARAMETERS          4
 
 /**
  * SDP Protocol
@@ -469,14 +590,12 @@ typedef enum rpn_parity {
     RPN_PARITY_SPACE = 7, 
 } rpn_parity_t;
 
-typedef enum rpn_flow_control {
-    RPN_FLOW_CONTROL_XONXOFF_ON_INPUT  = 1 << 0,
-    RPN_FLOW_CONTROL_XONXOFF_ON_OUTPUT = 1 << 1,
-    RPN_FLOW_CONTROL_RTR_ON_INPUT  = 1 << 2,
-    RPN_FLOW_CONTROL_RTR_ON_OUTPUT = 1 << 3,
-    RPN_FLOW_CONTROL_RTC_ON_INPUT  = 1 << 4,
-    RPN_FLOW_CONTROL_RTC_ON_OUTPUT = 1 << 5,
-} rpn_flow_control_t;
+#define RPN_FLOW_CONTROL_XONXOFF_ON_INPUT  0x01
+#define RPN_FLOW_CONTROL_XONXOFF_ON_OUTPUT 0x02
+#define RPN_FLOW_CONTROL_RTR_ON_INPUT      0x04
+#define RPN_FLOW_CONTROL_RTR_ON_OUTPUT     0x08
+#define RPN_FLOW_CONTROL_RTC_ON_INPUT      0x10
+#define RPN_FLOW_CONTROL_RTC_ON_OUTPUT     0x20
 
 #define RPN_PARAM_MASK_0_BAUD             0x01
 #define RPN_PARAM_MASK_0_DATA_BITS        0x02
@@ -568,8 +687,9 @@ typedef enum {
 #define ATT_ERROR_INSUFFICIENT_ENCRYPTION          0x0f
 #define ATT_ERROR_UNSUPPORTED_GROUP_TYPE           0x10
 #define ATT_ERROR_INSUFFICIENT_RESOURCES           0x11
+#define ATT_ERROR_VALUE_NOT_ALLOWED                0x13
 
-// MARK: ATT Error Codes used internally by BTstack
+// MARK: ATT Error Codes defined by BTstack
 #define ATT_ERROR_HCI_DISCONNECT_RECEIVED          0x1f
 #define ATT_ERROR_BONDING_INFORMATION_MISSING      0x70
 #define ATT_ERROR_DATA_MISMATCH                    0x7e
@@ -655,6 +775,12 @@ typedef struct {
     uint8_t  seconds;   // [0,59]
 } gatt_date_time_t;
 
+typedef enum {
+    GATT_MICROPHONE_CONTROL_MUTE_OFF = 0x00,
+    GATT_MICROPHONE_CONTROL_MUTE_ON,
+    GATT_MICROPHONE_CONTROL_MUTE_DISABLED
+} gatt_microphone_control_mute_t;
+
 /**
  * SM - LE Security Manager 
  */
@@ -691,6 +817,7 @@ typedef enum {
 #define SM_AUTHREQ_MITM_PROTECTION   0x04
 #define SM_AUTHREQ_SECURE_CONNECTION 0x08
 #define SM_AUTHREQ_KEYPRESS          0x10
+#define SM_AUTHREQ_CT2               0x20
 
 // Key distribution flags used by spec
 #define SM_KEYDIST_ENC_KEY  0x01
@@ -725,6 +852,9 @@ typedef enum {
 #define SM_REASON_INVALID_PARAMETERS           0x0a
 #define SM_REASON_DHKEY_CHECK_FAILED           0x0b
 #define SM_REASON_NUMERIC_COMPARISON_FAILED    0x0c
+#define SM_REASON_BR_EDR_PAIRING_IN_PROGRESS   0x0d
+#define SM_REASON_CROSS_TRANSPORT_KEY_DERIVATION_NOT_ALLOWED 0x0e
+#define SM_REASON_KEY_REJECTED                 0x0f
 
 // also, invalid parameters
 // and reserved

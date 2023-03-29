@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "sdp_bnep_query.c"
  
 // *****************************************************************************
-/* EXAMPLE_START(sdp_bnep_query): Dump remote BNEP PAN protocol UUID and L2CAP PSM
+/* EXAMPLE_START(sdp_bnep_query): SDP Client - Query BNEP SDP record
  *
  * @text The example shows how the SDP Client is used to get all BNEP service
  * records from a remote device. It extracts the remote BNEP PAN protocol 
@@ -83,7 +83,7 @@ static void assertBuffer(int size){
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 static void handle_sdp_client_query_result(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
-static void sdp_client_init(void){
+static void sdp_bnep_qeury_init(void){
     // init L2CAP
     l2cap_init();
 
@@ -259,6 +259,8 @@ static void handle_sdp_client_query_result(uint8_t packet_type, uint16_t channel
             } 
             printf("SDP query done.\n");
             break;
+        default:
+            break;
     }
     /* LISTING_RESUME */
 }
@@ -270,8 +272,8 @@ int btstack_main(int argc, const char * argv[]){
     (void)argv;
 
     printf("Client HCI init done\r\n");
-    
-    sdp_client_init();
+
+    sdp_bnep_qeury_init();
 
     // turn on!
     hci_power_control(HCI_POWER_ON);

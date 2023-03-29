@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -84,13 +84,10 @@ void btstack_memory_pool_free(btstack_memory_pool_t *pool, void * block){
     node_t *free_blocks = (node_t*) pool;
     node_t *node        = (node_t*) block;
 
-    // raise error and abort if node already in list
+    // assert that node is not already in list
     node_t * it;
     for (it = free_blocks->next; it != NULL; it = it->next){
-        if (it == node) {
-            log_error("btstack_memory_pool_free: block %p freed twice for pool %p", block, pool);
-            return;
-        }
+        btstack_assert(it != node);
     }
 
     // add block as node to list

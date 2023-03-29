@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,11 +35,10 @@
  *
  */
  
-// *****************************************************************************
-//
-// HFP mSBC encoder wrapper
-//
-// *****************************************************************************
+/**
+ * @title HFP mSBC Encoder 
+ *
+ */
 
 #ifndef HFP_MSBC_H
 #define HFP_MSBC_H
@@ -85,6 +84,11 @@ int  hfp_msbc_num_bytes_in_stream(void);
  * @param size num bytes to read from stream
  */
 void hfp_msbc_read_from_stream(uint8_t * buffer, int size);
+
+/**
+ * @brief De-Init HFP mSBC Codec
+ */
+void hfp_msbc_deinit(void);
 
 /* API_END */
 

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define BTSTACK_FILE__ "dut_mode_classic.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(dut_mode_classic): Enable Device Under Test (DUT) Mode for BR/EDR
+/* EXAMPLE_START(dut_mode_classic): Testing - Enable Device Under Test (DUT) Mode for Classic
  *
  * @text DUT mode can be used for production testing. This example just configures 
  * the Bluetooth Controller for DUT mode.
@@ -79,7 +79,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         case HCI_EVENT_COMMAND_COMPLETE:
             if (hci_event_command_complete_get_command_opcode(packet) == hci_enable_device_under_test_mode.opcode){
                 uint8_t status = hci_event_command_complete_get_return_parameters(packet)[0];
-                printf("Enable Device Under Test Mode: %s\n", status ? "Failed" : "OK");
+                printf("Enable Device Under Test Mode: %s\n", (status != ERROR_CODE_SUCCESS) ? "Failed" : "OK");
             }
             break;
         default:

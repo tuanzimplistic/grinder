@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -48,6 +48,12 @@
 
 #include "btstack_config.h"
 #include "main.h"
+
+#ifdef ENABLE_SEGGER_RTT
+#include "hci_dump_segger_rtt_stdout.h"
+#else
+#include "hci_dump_embedded_stdout.h"
+#endif
 
 #ifndef ENABLE_SEGGER_RTT
 /********************************************
@@ -201,7 +207,7 @@ void shci_cmd_resp_wait(uint32_t timeout){
 }
 void shci_notify_asynch_evt(void* pdata){
     UNUSED(pdata);
-    btstack_run_loop_freertos_trigger_from_isr();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 void ipcc_reset(void)
@@ -288,7 +294,7 @@ static void sys_evt_received(void *pdata)
         if (little_endian_read_16(shciEvt->evt.payload, 0) == SHCI_SUB_EVT_CODE_READY) {
             if (cpu2_state == CPU2_STATE_WAIT_FOR_STARTED){
                 cpu2_state = CPU2_STATE_W2_INIT_BLE;
-                btstack_run_loop_freertos_trigger_from_isr();
+                btstack_run_loop_poll_data_sources_from_irq();
                 portYIELD_FROM_ISR(pdTRUE);
             }
         }
@@ -299,7 +305,7 @@ static void ble_acl_acknowledged(void)
 {
     hci_acl_can_send_now = 1;
 
-    btstack_run_loop_freertos_trigger_from_isr();
+    btstack_run_loop_poll_data_sources_from_irq();
 }
 
 
@@ -316,7 +322,7 @@ static void ble_evt_received(TL_EvtPacket_t *hcievt)
 
     xQueueSendFromISR(hciEvtQueue, (void*)&hcievt, &yield);
 
-    btstack_run_loop_freertos_trigger_from_isr();
+    btstack_run_loop_poll_data_sources_from_irq();
 
     portYIELD_FROM_ISR(yield);
 }
@@ -577,13 +583,27 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
     }
 }
 
+
 extern int btstack_main(int argc, const char * argv[]);
 void port_thread(void* args){
 
-    // enable packet logger
+// uncomment to enable packet logger
+// #define ENABLE_HCI_DUMP
+
+    // config packet logger
 #ifdef ENABLE_HCI_DUMP
-    hci_dump_open(NULL, HCI_DUMP_STDOUT);
+#ifdef ENABLE_SEGGER_RTT
+    // Disable sleep modes as shown here:
+    // https://github.com/STMicroelectronics/STM32CubeWB/blob/master/Projects/P-NUCLEO-WB55.Nucleo/Applications/BLE/BLE_HeartRate/Core/Src/app_debug.c#L180
+    HAL_DBGMCU_EnableDBGSleepMode();
+    HAL_DBGMCU_EnableDBGStopMode();
+    // with this, RTT works in Skip mode but in Block mode
+    hci_dump_init(hci_dump_segger_rtt_stdout_get_instance());
+#else
+    hci_dump_init(hci_dump_embedded_stdout_get_instance());
 #endif
+#endif
+
     /// GET STARTED with BTstack ///
     btstack_memory_init();
     btstack_run_loop_init(btstack_run_loop_freertos_get_instance());

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title Battery Service Server
+ * 
+ */
+
 #ifndef BATTERY_SERVICE_SERVER_H
 #define BATTERY_SERVICE_SERVER_H
 
@@ -44,8 +50,14 @@ extern "C" {
 #endif
 
 /**
- * Implementation of the GATT Battery Service Server 
- * To use with your application, add '#import <battery_service.gatt' to your .gatt file
+ * @text The Battery Service allows to query your device's battery level in a standardized way.
+ * 
+ * To use with your application, add `#import <battery_service.gatt>` to your .gatt file. 
+ * After adding it to your .gatt file, you call *battery_service_server_init(value)* with the
+ * current value of your battery. The valid range for the battery level is 0-100.
+ *
+ * If the battery level changes, you can call *battery_service_server_set_battery_value(value)*. 
+ * The service supports sending Notifications if the client enables them.
  */
 
 /* API_START */

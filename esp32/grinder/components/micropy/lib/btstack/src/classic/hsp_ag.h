@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,12 +35,10 @@
  *
  */
 
-// *****************************************************************************
-//
-// HSP Audio Gateway
-//
-// *****************************************************************************
-
+/**
+ * @title HSP Audio Gateway
+ *
+ */
 
 #ifndef btstack_hsp_ag_h
 #define btstack_hsp_ag_h
@@ -164,6 +162,17 @@ void hsp_ag_enable_custom_commands(int enable);
  * @param result 
  */
 int hsp_ag_send_result(char * result);
+
+/**
+ * @brief Set packet types used for outgoing SCO connection requests
+ * @param common single packet_types: SCO_PACKET_TYPES_*
+ */
+void hsp_ag_set_sco_packet_types(uint16_t packet_types);
+
+/**
+ * @brief De-Init HSP AG
+ */
+void hsp_ag_deinit(void);
 
 /* API_END */
 

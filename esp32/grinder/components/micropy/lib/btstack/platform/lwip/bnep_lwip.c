@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -527,4 +527,22 @@ void bnep_lwip_register_packet_handler(btstack_packet_handler_t handler){
  */
 uint8_t bnep_lwip_register_service(uint16_t service_uuid, uint16_t max_frame_size){
     return bnep_register_service(packet_handler, service_uuid, max_frame_size);
+}
+
+/**
+ * @brief Creates BNEP connection (channel) to a given server on a remote device with baseband address. A new baseband connection will be initiated if necessary.
+ * @note: uses our packet handler to manage lwIP network interface
+ * @param addr
+ * @param l2cap_psm
+ * @param uuid_src
+ * @param uuid_dest
+ * @return status
+ */
+uint8_t bnep_lwip_connect(bd_addr_t addr, uint16_t l2cap_psm, uint16_t uuid_src, uint16_t uuid_dest){
+    int status = bnep_connect(packet_handler, addr, l2cap_psm, uuid_src, uuid_dest);
+    if (status != 0){
+        return ERROR_CODE_UNSPECIFIED_ERROR;
+    } else {
+        return ERROR_CODE_SUCCESS;
+    }
 }

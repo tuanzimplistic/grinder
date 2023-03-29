@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,10 +35,15 @@
  *
  */
 
+/**
+ * @title Security Manager
+ * 
+ */
+
 #ifndef SM_H
 #define SM_H
 
- #if defined __cplusplus
+#if defined __cplusplus
 extern "C" {
 #endif
 
@@ -63,18 +68,18 @@ void sm_init(void);
 /**
  * @brief Set secret ER key for key generation as described in Core V4.0, Vol 3, Part G, 5.2.2
  * @note If not set and btstack_tlv is configured, ER key is generated and stored in TLV by SM
- * @param er
+ * @param er key
  */
 void sm_set_er(sm_key_t er);
 
 /**
  * @brief Set secret IR key for key generation as described in Core V4.0, Vol 3, Part G, 5.2.2
  * @note If not set and btstack_tlv is configured, IR key is generated and stored in TLV by SM
+ * @param ir key
  */
 void sm_set_ir(sm_key_t ir);
 
 /**
- *
  * @brief Registers OOB Data Callback. The callback should set the oob_data and return 1 if OOB data is availble
  * @param get_oob_data_callback
  */
@@ -82,8 +87,15 @@ void sm_register_oob_data_callback( int (*get_oob_data_callback)(uint8_t address
 
 /**
  * @brief Add event packet handler. 
+ * @param callback_handler
  */
 void sm_add_event_handler(btstack_packet_callback_registration_t * callback_handler);
+
+/**
+ * @brief Remove event packet handler.
+ * @param callback_handler
+ */
+void sm_remove_event_handler(btstack_packet_callback_registration_t * callback_handler);
 
 /**
  * @brief Limit the STK generation methods. Bonding is stopped if the resulting one isn't in the list
@@ -111,6 +123,12 @@ void sm_set_authentication_requirements(uint8_t auth_req);
 void sm_set_io_capabilities(io_capability_t io_capability);
 
 /**
+ * @brief Enable/disable Secure Connections Mode only
+ * @param enable secure connections only mode
+ */
+void sm_set_secure_connections_only_mode(bool enable);
+
+/**
  * @brief Let Peripheral request an encrypted connection right after connecting
  * @note Not used normally. Bonding is triggered by access to protected attributes in ATT Server
  */
@@ -118,7 +136,7 @@ void sm_set_request_security(int enable);
 
 /** 
  * @brief Trigger Security Request
- * @note Not used normally. Bonding is triggered by access to protected attributes in ATT Server
+ * @deprecated please use sm_request_pairing instead
  */
 void sm_send_security_request(hci_con_handle_t con_handle);
 
@@ -155,7 +173,7 @@ void sm_passkey_input(hci_con_handle_t con_handle, uint32_t passkey);
 void sm_keypress_notification(hci_con_handle_t con_handle, uint8_t action);
 
 /**
- * @brief Used by att_server.c to request user authorization.
+ * @brief Used by att_server.c and gatt_client.c to request user authentication
  * @param con_handle
  */
 void sm_request_pairing(hci_con_handle_t con_handle);
@@ -174,7 +192,7 @@ void sm_authorization_grant(hci_con_handle_t con_handle);
 
 /**
  * @brief Support for signed writes, used by att_server.
- * @returns ready
+ * @return ready
  */
 int sm_cmac_ready(void);
 
@@ -192,27 +210,29 @@ int sm_cmac_ready(void);
  */
 void sm_cmac_signed_write_start(const sm_key_t key, uint8_t opcode, uint16_t attribute_handle, uint16_t message_len, const uint8_t * message, uint32_t sign_counter, void (*done_callback)(uint8_t * hash));
 
-/*
+/**
  * @brief Match address against bonded devices
+ * @param address_type
+ * @param address
  * @return 0 if successfully added to lookup queue
  * @note Triggers SM_IDENTITY_RESOLVING_* events
  */
-int sm_address_resolution_lookup(uint8_t addr_type, bd_addr_t addr);
+int sm_address_resolution_lookup(uint8_t address_type, bd_addr_t address);
 
 /**
  * @brief Get Identity Resolving state
  * @param con_handle
  * @return irk_lookup_state_t
- * @note returns IRK_LOOKUP_IDLE if connection does not exist
+ * @note return IRK_LOOKUP_IDLE if connection does not exist
  */
 irk_lookup_state_t sm_identity_resolving_state(hci_con_handle_t con_handle);
 
 /**
  * @brief Identify device in LE Device DB.
- * @param handle
+ * @param con_handle
  * @return index from le_device_db or -1 if not found/identified
  */
-int sm_le_device_index(hci_con_handle_t con_handle );
+int sm_le_device_index(hci_con_handle_t con_handle);
 
 /**
  * @brief Use fixec passkey for Legacy and SC instead of generating a random number
@@ -237,19 +257,29 @@ void sm_allow_ltk_reconstruction_without_le_device_db_entry(int allow);
  * @note This generates a 128 bit random number ra and then calculates Ca = f4(PKa, PKa, ra, 0)
  *       New OOB data should be generated for each pairing. Ra is used for subsequent OOB pairings
  * @param callback
- * @returns status
+ * @return status
  */
 uint8_t sm_generate_sc_oob_data(void (*callback)(const uint8_t * confirm_value, const uint8_t * random_value));
 
 /**
- *
  * @brief Registers OOB Data Callback for LE Secure Conections. The callback should set all arguments and return 1 if OOB data is availble
  * @note the oob_sc_local_random usually is the random_value returend by sm_generate_sc_oob_data
  * @param get_oob_data_callback
  */
 void sm_register_sc_oob_data_callback( int (*get_sc_oob_data_callback)(uint8_t address_type, bd_addr_t addr, uint8_t * oob_sc_peer_confirm, uint8_t * oob_sc_peer_random));
 
+/**
+ * @bbrief Register LTK Callback that allows to provide a custom LTK on re-encryption. The callback returns true if LTK was modified
+ * @param get_ltk_callback
+ */
+void sm_register_ltk_callback( bool (*get_ltk_callback)(hci_con_handle_t con_handle, uint8_t address_type, bd_addr_t addr, uint8_t * ltk));
+
 /* API_END */
+
+/**
+ * @brief De-Init SM
+ */
+void sm_deinit(void);
 
 // PTS testing
 void sm_test_set_irk(sm_key_t irk);

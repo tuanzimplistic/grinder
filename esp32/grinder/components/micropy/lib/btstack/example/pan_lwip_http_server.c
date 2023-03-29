@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,7 @@
 #define __BTSTACK_FILE__ "pan_lwip_http_server.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(pan_lwip_http_server): PAN - HTTP Server using lwIP
+/* EXAMPLE_START(pan_lwip_http_server): PAN - lwIP HTTP and DHCP Server 
  *
  * @text Bluetooth PAN is mainly used for Internet Tethering, where e.g. a mobile
  * phone provides internet connection to a laptop or a tablet.
@@ -175,6 +175,11 @@ static void pan_bnep_setup(void){
     // Initialize L2CAP
     l2cap_init();
 
+#ifdef ENABLE_BLE
+    // Initialize LE Security Manager. Needed for cross-transport key derivation
+    sm_init();
+#endif
+
     // Initialize BNEP
     bnep_init();
 
@@ -242,7 +247,7 @@ int fs_open_custom(struct fs_file *file, const char *name){
     if (*name != '/') return 0;
     uint32_t file_size = btstack_atoi(&name[1]);
     if (file_size > 0) {
-        printf("Serving '%s' with %u bytes\n", name, file_size);
+        printf("Serving '%s' with %"PRIu32" bytes\n", name, file_size);
         /* initialize fs_file correctly */
         memset(file, 0, sizeof(struct fs_file));
         file->len = file_size;

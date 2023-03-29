@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -49,6 +49,8 @@
 #include "btstack.h"
 #include "mesh_node_demo.h"
 
+const char * device_uuid_string = "001BDC0810210B0E0A0C000B0E0A0C00";
+
 // general
 #define MESH_BLUEKITCHEN_MODEL_ID_TEST_SERVER   0x0000u
 
@@ -57,8 +59,7 @@ static mesh_model_t                 mesh_vendor_model;
 static mesh_model_t                 mesh_generic_on_off_server_model;
 static mesh_generic_on_off_state_t  mesh_generic_on_off_state;
 
-static char gap_name_buffer[30];
-static char gap_name_prefix[] = "Mesh ";
+static char gap_name_buffer[] = "Mesh 00:00:00:00:00:00";
 
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 
@@ -66,20 +67,19 @@ static btstack_packet_callback_registration_t hci_event_callback_registration;
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
     UNUSED(channel);
     UNUSED(size);
+
+    if (packet_type != HCI_EVENT_PACKET) return;
+
     bd_addr_t addr;
-    switch (packet_type) {
-        case HCI_EVENT_PACKET:
-            switch (hci_event_packet_get_type(packet)) {
-                case BTSTACK_EVENT_STATE:
-                    if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING) break;
-                    // setup gap name
-                    gap_local_bd_addr(addr);
-                    strcpy(gap_name_buffer, gap_name_prefix);
-                    strcat(gap_name_buffer, bd_addr_to_str(addr));
-                    break;
-                default:
-                    break;
-            }
+    
+    switch (hci_event_packet_get_type(packet)) {
+        case BTSTACK_EVENT_STATE:
+            if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING) break;
+            // setup gap name from local address
+            gap_local_bd_addr(addr);
+            btstack_replace_bd_addr_placeholder((uint8_t*)gap_name_buffer, sizeof(gap_name_buffer), addr);
+            break;
+        default:
             break;
     }
 }
@@ -87,7 +87,7 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
 static uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size){
     UNUSED(connection_handle);
     if (att_handle == ATT_CHARACTERISTIC_GAP_DEVICE_NAME_01_VALUE_HANDLE){
-        return att_read_callback_handle_blob((const uint8_t *)gap_name_buffer, strlen(gap_name_buffer), offset, buffer, buffer_size);
+        return att_read_callback_handle_blob((const uint8_t *)gap_name_buffer, (uint16_t) strlen(gap_name_buffer), offset, buffer, buffer_size);
     }
     return 0;
 }
@@ -179,6 +179,34 @@ static void stdin_process(char cmd){
     }
 }
 
+static int scan_hex_byte(const char * byte_string){
+    int upper_nibble = nibble_for_char(*byte_string++);
+    if (upper_nibble < 0) return -1;
+    int lower_nibble = nibble_for_char(*byte_string);
+    if (lower_nibble < 0) return -1;
+    return (upper_nibble << 4) | lower_nibble;
+}
+
+static int btstack_parse_hex(const char * string, uint16_t len, uint8_t * buffer){
+    int i;
+    for (i = 0; i < len; i++) {
+        int single_byte = scan_hex_byte(string);
+        if (single_byte < 0) return 0;
+        string += 2;
+        buffer[i] = (uint8_t)single_byte;
+        // don't check seperator after last byte
+        if (i == len - 1) {
+            return 1;
+        }
+        // optional seperator
+        char separator = *string;
+        if (separator == ':' && separator == '-' && separator == ' ') {
+            string++;
+        }
+    }
+    return 1;
+}
+
 int btstack_main(void);
 int btstack_main(void)
 {
@@ -193,9 +221,6 @@ int btstack_main(void)
 #ifdef ENABLE_MESH_GATT_BEARER
     // l2cap
     l2cap_init();
-
-    // setup le device db
-    le_device_db_init();
 
     // setup ATT server
     att_server_init(profile_data, &att_read_callback, NULL);    
@@ -251,6 +276,10 @@ int btstack_main(void)
     gap_set_scan_parameters(0, 0x300, 0x300);
     gap_start_scan();
 #endif
+
+    uint8_t device_uuid[16];
+    btstack_parse_hex(device_uuid_string, 16, device_uuid);
+    mesh_node_set_device_uuid(device_uuid);
 
     // turn on!
 	hci_power_control(HCI_POWER_ON);

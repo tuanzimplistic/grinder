@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -97,21 +97,12 @@ static char db_path[sizeof(DB_PATH_TEMPLATE) - 2 + 17 + 1];
 
 static le_device_memory_db_t le_devices[LE_DEVICE_MEMORY_SIZE];
 
-static char bd_addr_to_dash_str_buffer[6*3];  // 12-45-78-01-34-67\0
 static char * bd_addr_to_dash_str(bd_addr_t addr){
-    char * p = bd_addr_to_dash_str_buffer;
-    int i;
-    for (i = 0; i < 6 ; i++) {
-        *p++ = char_for_nibble((addr[i] >> 4) & 0x0F);
-        *p++ = char_for_nibble((addr[i] >> 0) & 0x0F);
-        *p++ = '-';
-    }
-    *--p = 0;
-    return (char *) bd_addr_to_dash_str_buffer;
+    return bd_addr_to_str_with_delimiter(addr, '-');
 }
 
 static inline void write_delimiter(FILE * wFile){
-    fwrite(", ", 1, 1, wFile);
+    fwrite(",", 1, 1, wFile);
 }
 static inline void write_hex_byte(FILE * wFile, uint8_t value){
     char buffer[2];
@@ -240,10 +231,13 @@ static void le_device_db_read(void){
         le_devices[i].local_counter = read_value(wFile, 2);
 #endif
         // read next character and secure connection field if hex nibble follows
+        // (if not, we just read the newline)
         int c = fgetc(wFile);
         if (nibble_for_char(c) >= 0){
             int d = fgetc(wFile);
             le_devices[i].secure_connection = nibble_for_char(c) << 4 | nibble_for_char(d);
+            // read delimiter
+            read_delimiter(wFile);
             // read newline
             fgetc(wFile);
         }

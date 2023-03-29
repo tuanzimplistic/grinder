@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title Cycling Speed and Cadence Service Server
+ * 
+ */
+
 #ifndef CYCLING_SPEED_AND_CADENCE_SERVICE_SERVER_H
 #define CYCLING_SPEED_AND_CADENCE_SERVICE_SERVER_H
 
@@ -44,15 +50,13 @@ extern "C" {
 #endif
 
 /**
- * Implementation of the GATT Cycling Speed and Cadence Service Server 
- */
-
-// *****************************************************************************
-/* GATT_SERVICE_SERVER_START(cycling_speed_and_cadence_service_server){Cycling Speed and Cadence Service} 
+ * @text The Cycling Speed and Cadence Service allows to query 
+ * device's speed- and cadence-related data for use in sports and 
+ * fitness applications.
  *
+ * To use with your application, add `#import <cycling_speed_and_cadence_service.gatt>` 
+ * to your .gatt file. 
  */
-// *****************************************************************************
-/* GATT_SERVICE_SERVER_END */
 
 /* API_START */
 

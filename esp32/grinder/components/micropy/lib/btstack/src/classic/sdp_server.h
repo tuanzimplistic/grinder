@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title SDP Server
+ *
+ */
+
 #ifndef SDP_H
 #define SDP_H
 
@@ -61,7 +67,7 @@ int sdp_handle_service_search_attribute_request(uint8_t * packet, uint16_t remot
 /* API_START */
 
 /** 
- * @brief Set up SDP.
+ * @brief Set up SDP Server.
  */
 void sdp_init(void);
 
@@ -79,9 +85,11 @@ uint8_t sdp_register_service(const uint8_t * record);
  */
 void sdp_unregister_service(uint32_t service_record_handle);
 
-/* API_END */
-
-// used by daemon
+/**
+ * @brief gets service record handle from record
+ * @resutl service record handle or 0
+ */
+uint32_t sdp_get_service_record_handle(const uint8_t * record);
 
 /**
  * @brief Finds an unused valid service record handle
@@ -97,10 +105,12 @@ uint32_t sdp_create_service_record_handle(void);
 uint8_t * sdp_get_record_for_handle(uint32_t handle);
 
 /**
- * @brief gets service record handle from record
- * @resutl service record handle or 0
+ * @brief De-Init SDP Server
  */
-uint32_t sdp_get_service_record_handle(const uint8_t * record);
+void sdp_deinit(void);
+
+/* API_END */
+
 
 #if defined __cplusplus
 }

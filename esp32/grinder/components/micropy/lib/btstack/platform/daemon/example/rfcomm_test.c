@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -130,11 +130,6 @@ void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint
                     bt_send_cmd(&btstack_set_discoverable, 1);
                     break;
 
-                case DAEMON_EVENT_RFCOMM_CREDITS:
-                    sprintf((char*)test_data, "\n\r\n\r-> %09u <- ", counter++);
-                    bt_send_rfcomm(rfcomm_channel_id, test_data, mtu);
-                    break;
-                    
 				case HCI_EVENT_PIN_CODE_REQUEST:
 					// inform about pin code request
 					printf("Using PIN 0000\n");

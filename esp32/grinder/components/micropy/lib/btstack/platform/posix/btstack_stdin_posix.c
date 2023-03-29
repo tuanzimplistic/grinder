@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -37,13 +37,11 @@
 
 #define BTSTACK_FILE__ "btstack_stdin_posix.c"
 
-#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 
-#include "btstack_defines.h"
+#include "btstack_debug.h"
 #include "btstack_run_loop.h"
-#include <stdlib.h>
 
 #include "btstack_stdin.h"
 #include <termios.h>
@@ -61,6 +59,10 @@ static void stdin_process(btstack_data_source_t *ds, btstack_data_source_callbac
     int result = read(stdin_source.source.fd, &data, 1);
     if (result < 1) return;
     if (stdin_handler == NULL) return;
+
+#ifdef ENABLE_BTSTACK_STDIN_LOGGING
+    log_info("stdin: %c", data);
+#endif
 
     (*stdin_handler)(data);
 }

@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -55,8 +55,9 @@
  */
 
 
-#include "btstack_run_loop.h"
 #include "btstack_run_loop_embedded.h"
+
+#include "btstack_run_loop.h"
 #include "btstack_linked_list.h"
 #include "btstack_util.h"
 #include "hal_tick.h"
@@ -79,11 +80,6 @@
 #endif
 
 // the run loop
-static btstack_linked_list_t data_sources;
-
-#ifdef TIMER_SUPPORT
-static btstack_linked_list_t timers;
-#endif
 
 #ifdef HAVE_EMBEDDED_TICK
 static volatile uint32_t system_ticks;
@@ -91,19 +87,7 @@ static volatile uint32_t system_ticks;
 
 static int trigger_event_received = 0;
 
-/**
- * Add data_source to run_loop
- */
-static void btstack_run_loop_embedded_add_data_source(btstack_data_source_t *ds){
-    btstack_linked_list_add(&data_sources, (btstack_linked_item_t *) ds);
-}
-
-/**
- * Remove data_source from run loop
- */
-static bool btstack_run_loop_embedded_remove_data_source(btstack_data_source_t *ds){
-    return btstack_linked_list_remove(&data_sources, (btstack_linked_item_t *) ds);
-}
+static bool run_loop_exit_requested;
 
 // set timer
 static void btstack_run_loop_embedded_set_timer(btstack_timer_source_t *ts, uint32_t timeout_in_ms){
@@ -119,75 +103,16 @@ static void btstack_run_loop_embedded_set_timer(btstack_timer_source_t *ts, uint
 }
 
 /**
- * Add timer to run_loop (keep list sorted)
- */
-static void btstack_run_loop_embedded_add_timer(btstack_timer_source_t *ts){
-#ifdef TIMER_SUPPORT
-    btstack_linked_item_t *it;
-    for (it = (btstack_linked_item_t *) &timers; it->next ; it = it->next){
-        // don't add timer that's already in there
-        btstack_timer_source_t * next = (btstack_timer_source_t *) it->next;
-        if (next == ts){
-            log_error( "btstack_run_loop_timer_add error: timer to add already in list!");
-            return;
-        }
-        // exit if new timeout before list timeout
-        int32_t delta = btstack_time_delta(ts->timeout, next->timeout);
-        if (delta < 0) break;
-    }
-
-    ts->item.next = it->next;
-    it->next = (btstack_linked_item_t *) ts;
-#endif
-}
-
-/**
- * Remove timer from run loop
- */
-static bool btstack_run_loop_embedded_remove_timer(btstack_timer_source_t *ts){
-#ifdef TIMER_SUPPORT
-    return btstack_linked_list_remove(&timers, (btstack_linked_item_t *) ts);
-#else
-    return 0;
-#endif
-}
-
-static void btstack_run_loop_embedded_dump_timer(void){
-#ifdef TIMER_SUPPORT
-#ifdef ENABLE_LOG_INFO 
-    btstack_linked_item_t *it;
-    int i = 0;
-    for (it = (btstack_linked_item_t *) timers; it ; it = it->next){
-        btstack_timer_source_t *ts = (btstack_timer_source_t*) it;
-        log_info("timer %u, timeout %u\n", i, (unsigned int) ts->timeout);
-    }
-#endif
-#endif
-}
-
-static void btstack_run_loop_embedded_enable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags |= callback_types;
-}
-
-static void btstack_run_loop_embedded_disable_data_source_callbacks(btstack_data_source_t * ds, uint16_t callback_types){
-    ds->flags &= ~callback_types;
-}
-
-/**
  * Execute run_loop once
  */
 void btstack_run_loop_embedded_execute_once(void) {
-    btstack_data_source_t *ds;
 
-    // process data sources
-    btstack_data_source_t *next;
-    for (ds = (btstack_data_source_t *) data_sources; ds != NULL ; ds = next){
-        next = (btstack_data_source_t *) ds->item.next; // cache pointer to next data_source to allow data source to remove itself
-        if (ds->flags & DATA_SOURCE_CALLBACK_POLL){
-            ds->process(ds, DATA_SOURCE_CALLBACK_POLL);
-        }
-    }
-    
+    // poll data sources
+    btstack_run_loop_base_poll_data_sources();
+
+    // execute callbacks
+    btstack_run_loop_base_execute_callbacks();
+
 #ifdef TIMER_SUPPORT
 
 #ifdef HAVE_EMBEDDED_TICK
@@ -198,14 +123,7 @@ void btstack_run_loop_embedded_execute_once(void) {
 #endif
 
     // process timers
-    while (timers) {
-        btstack_timer_source_t * ts = (btstack_timer_source_t *) timers;
-        int32_t delta = btstack_time_delta(ts->timeout, now);
-        if (delta > 0) break;
-
-        btstack_run_loop_embedded_remove_timer(ts);
-        ts->process(ts);
-    }
+    btstack_run_loop_base_process_timers(now);
 #endif
     
     // disable IRQs and check if run loop iteration has been requested. if not, go to sleep
@@ -222,9 +140,13 @@ void btstack_run_loop_embedded_execute_once(void) {
  * Execute run_loop
  */
 static void btstack_run_loop_embedded_execute(void) {
-    while (true) {
+    while (run_loop_exit_requested == false) {
         btstack_run_loop_embedded_execute_once();
     }
+}
+
+static void btstack_run_loop_embedded_trigger_exit(void){
+    run_loop_exit_requested = true;
 }
 
 #ifdef HAVE_EMBEDDED_TICK
@@ -252,20 +174,22 @@ static uint32_t btstack_run_loop_embedded_get_time_ms(void){
 #endif
 }
 
-
-/**
- * trigger run loop iteration
- */
-void btstack_run_loop_embedded_trigger(void){
+static void btstack_run_loop_embedded_execute_on_main_thread(btstack_context_callback_registration_t * callback_registration){
+    btstack_run_loop_base_add_callback(callback_registration);
     trigger_event_received = 1;
 }
 
-static void btstack_run_loop_embedded_init(void){
-    data_sources = NULL;
+static void btstack_run_loop_embedded_poll_data_sources_from_irq(void){
+    trigger_event_received = 1;
+}
 
-#ifdef TIMER_SUPPORT
-    timers = NULL;
-#endif
+// @deprecated Use btstack_run_loop_poll_data_sources_from_irq() instead
+void btstack_run_loop_embedded_trigger(void){
+    btstack_run_loop_embedded_poll_data_sources_from_irq();
+}
+
+static void btstack_run_loop_embedded_init(void){
+    btstack_run_loop_base_init();
 
 #ifdef HAVE_EMBEDDED_TICK
     system_ticks = 0;
@@ -280,16 +204,19 @@ static void btstack_run_loop_embedded_init(void){
 
 static const btstack_run_loop_t btstack_run_loop_embedded = {
     &btstack_run_loop_embedded_init,
-    &btstack_run_loop_embedded_add_data_source,
-    &btstack_run_loop_embedded_remove_data_source,
-    &btstack_run_loop_embedded_enable_data_source_callbacks,
-    &btstack_run_loop_embedded_disable_data_source_callbacks,
+    &btstack_run_loop_base_add_data_source,
+    &btstack_run_loop_base_remove_data_source,
+    &btstack_run_loop_base_enable_data_source_callbacks,
+    &btstack_run_loop_base_disable_data_source_callbacks,
     &btstack_run_loop_embedded_set_timer,
-    &btstack_run_loop_embedded_add_timer,
-    &btstack_run_loop_embedded_remove_timer,
+    &btstack_run_loop_base_add_timer,
+    &btstack_run_loop_base_remove_timer,
     &btstack_run_loop_embedded_execute,
-    &btstack_run_loop_embedded_dump_timer,
+    &btstack_run_loop_base_dump_timer,
     &btstack_run_loop_embedded_get_time_ms,
+    &btstack_run_loop_embedded_poll_data_sources_from_irq,
+    &btstack_run_loop_embedded_execute_on_main_thread,
+    &btstack_run_loop_embedded_trigger_exit,
 };
 
 const btstack_run_loop_t * btstack_run_loop_embedded_get_instance(void){

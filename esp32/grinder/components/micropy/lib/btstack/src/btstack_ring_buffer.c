@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -42,8 +42,6 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "btstack_ring_buffer.h"
@@ -56,8 +54,12 @@
 void btstack_ring_buffer_init(btstack_ring_buffer_t * ring_buffer, uint8_t * storage, uint32_t storage_size){
     ring_buffer->storage = storage;
     ring_buffer->size = storage_size;
+    btstack_ring_buffer_reset(ring_buffer);
+}
+
+void btstack_ring_buffer_reset(btstack_ring_buffer_t * ring_buffer){
     ring_buffer->last_read_index = 0;
-    ring_buffer->last_written_index = 0;   
+    ring_buffer->last_written_index = 0;
     ring_buffer->full = 0;
 }
 
@@ -70,7 +72,7 @@ uint32_t btstack_ring_buffer_bytes_available(btstack_ring_buffer_t * ring_buffer
 
 // test if ring buffer is empty
 int btstack_ring_buffer_empty(btstack_ring_buffer_t * ring_buffer){
-    return btstack_ring_buffer_bytes_available(ring_buffer) == 0;
+    return btstack_ring_buffer_bytes_available(ring_buffer) == 0u;
 }
 
 // 
@@ -85,15 +87,17 @@ int btstack_ring_buffer_write(btstack_ring_buffer_t * ring_buffer, uint8_t * dat
     }
 
     // simplify logic below by asserting data_length > 0
-    if (data_length == 0) return 0;
+    if (data_length == 0u) return 0u;
+
+    uint32_t  remaining_data_length = data_length;
+    const uint8_t * remaining_data = data;
 
     // copy first chunk
     unsigned int bytes_until_end = ring_buffer->size - ring_buffer->last_written_index;
-    unsigned int bytes_to_copy = btstack_min(bytes_until_end, data_length);
-    (void)memcpy(&ring_buffer->storage[ring_buffer->last_written_index],
-                 data, bytes_to_copy);
-    data_length -= bytes_to_copy;
-    data += bytes_to_copy;
+    unsigned int bytes_to_copy = btstack_min(bytes_until_end, remaining_data_length);
+    (void)memcpy(&ring_buffer->storage[ring_buffer->last_written_index], remaining_data, bytes_to_copy);
+    remaining_data_length -= bytes_to_copy;
+    remaining_data += bytes_to_copy;
 
     // update last written index
     ring_buffer->last_written_index += bytes_to_copy;
@@ -102,34 +106,36 @@ int btstack_ring_buffer_write(btstack_ring_buffer_t * ring_buffer, uint8_t * dat
     }
 
     // copy second chunk
-    if (data_length) {
-        (void)memcpy(&ring_buffer->storage[0], data, data_length);
-        ring_buffer->last_written_index += data_length;
+    if (remaining_data_length != 0) {
+        (void)memcpy(&ring_buffer->storage[0], remaining_data, remaining_data_length);
+        ring_buffer->last_written_index += remaining_data_length;
     }
 
     // mark buffer as full
     if (ring_buffer->last_written_index == ring_buffer->last_read_index){
         ring_buffer->full = 1;
     }
-    return 0;
+    return ERROR_CODE_SUCCESS;
 } 
 
 // fetch data_length bytes from ring buffer
 void btstack_ring_buffer_read(btstack_ring_buffer_t * ring_buffer, uint8_t * data, uint32_t data_length, uint32_t * number_of_bytes_read){
     // limit data to get and report
-    data_length = btstack_min(data_length, btstack_ring_buffer_bytes_available(ring_buffer));
-    *number_of_bytes_read = data_length;
+    uint32_t remaining_data_length = btstack_min(data_length, btstack_ring_buffer_bytes_available(ring_buffer));
+    *number_of_bytes_read = remaining_data_length;
 
-    // simplify logic below by asserting data_length > 0
-    if (data_length == 0) return;
+    // simplify logic below by asserting remaining_data_length > 0
+    if (remaining_data_length == 0u) return;
+
+    uint8_t * remaining_data = data;
 
     // copy first chunk
     unsigned int bytes_until_end = ring_buffer->size - ring_buffer->last_read_index;
-    unsigned int bytes_to_copy = btstack_min(bytes_until_end, data_length);
-    (void)memcpy(data, &ring_buffer->storage[ring_buffer->last_read_index],
+    unsigned int bytes_to_copy = btstack_min(bytes_until_end, remaining_data_length);
+    (void)memcpy(remaining_data, &ring_buffer->storage[ring_buffer->last_read_index],
                  bytes_to_copy);
-    data_length -= bytes_to_copy;
-    data += bytes_to_copy;
+    remaining_data_length -= bytes_to_copy;
+    remaining_data += bytes_to_copy;
 
     // update last read index
     ring_buffer->last_read_index += bytes_to_copy;
@@ -138,9 +144,9 @@ void btstack_ring_buffer_read(btstack_ring_buffer_t * ring_buffer, uint8_t * dat
     }
 
     // copy second chunk
-    if (data_length) {
-        (void)memcpy(data, &ring_buffer->storage[0], data_length);
-        ring_buffer->last_read_index += data_length;
+    if (remaining_data_length != 0) {
+        (void)memcpy(remaining_data, &ring_buffer->storage[0], remaining_data_length);
+        ring_buffer->last_read_index += remaining_data_length;
     }
 
     // clear full flag

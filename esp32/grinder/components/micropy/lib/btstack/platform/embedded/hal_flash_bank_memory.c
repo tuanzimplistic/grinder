@@ -14,11 +14,11 @@
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY MATTHIAS RINGWALD AND CONTRIBUTORS
+ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -42,11 +42,6 @@
 
 #include "stdint.h"
 #include "string.h"
-
-#ifdef BTSTACK_TEST
-#include "stdio.h"
-#include <stdlib.h>	// exit(..)
-#endif
 
 static uint32_t hal_flash_bank_memory_get_size(void * context){
 	hal_flash_bank_memory_t * self = (hal_flash_bank_memory_t *) context;
@@ -89,7 +84,10 @@ static void hal_flash_bank_memory_write(void * context, int bank, uint32_t offse
 	int i;
 	for (i=0;i<size;i++){
 		// write 0xff doesn't change anything
-		if (data[i] == 0xff) continue;
+		if (data[i] == 0xff) {
+		    offset++;
+		    continue;
+		}
 		// writing something other than 0x00 is only allowed once
 		if (self->banks[bank][offset] != 0xff && data[i] != 0x00){
 			log_error("Error: offset %u written twice. Data: 0x%02x!", offset+i, data[i]);

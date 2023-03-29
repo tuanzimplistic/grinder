@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -35,12 +35,11 @@
  *
  */
 
-/*
- * avdtp_source.h
- * 
- * Audio/Video Distribution Transport Protocol Source
+/**
+ * @title AVDTP Source
  *
- * AVDTP Source is a device that streames media data.
+ * Audio/Video Distribution Transport Protocol (AVDTP) Source is a device that streames media data.
+ *
  */
 
 #ifndef AVDTP_SOURCE_H
@@ -107,7 +106,7 @@ void avdtp_source_register_header_compression_category(uint8_t seid, uint8_t bac
  * @param media_codec_info
  * @param media_codec_info_len
  */
-void avdtp_source_register_media_codec_category(uint8_t seid, avdtp_media_type_t media_type, avdtp_media_codec_type_t media_codec_type, uint8_t * media_codec_info, uint16_t media_codec_info_len);
+void avdtp_source_register_media_codec_category(uint8_t seid, avdtp_media_type_t media_type, avdtp_media_codec_type_t media_codec_type, const uint8_t *media_codec_info, uint16_t media_codec_info_len);
 
 /**
  * @brief Register multiplexing category with local stream endpoint identified by seid
@@ -119,7 +118,7 @@ void avdtp_source_register_multiplexing_category(uint8_t seid, uint8_t fragmenta
 /**
  * @brief Initialize up AVDTP Source device.
  */
-void avdtp_source_init(avdtp_context_t * avdtp_context);
+void avdtp_source_init(void);
 
 /**
  * @brief Register callback for the AVDTP Source client. See btstack_defines.h for AVDTP_SUBEVENT_* events
@@ -139,35 +138,35 @@ uint8_t avdtp_source_connect(bd_addr_t bd_addr, uint16_t * avdtp_cid);
 /**
  * @brief Disconnect from device with connection handle. 
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER
  */
 uint8_t avdtp_source_disconnect(uint16_t avdtp_cid);
 
 /**
  * @brief Discover stream endpoints
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_discover_stream_endpoints(uint16_t avdtp_cid);
 
 /**
  * @brief Get capabilities
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_get_capabilities(uint16_t avdtp_cid, uint8_t acp_seid);
 
 /**
  * @brief Get all capabilities
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_get_all_capabilities(uint16_t avdtp_cid, uint8_t acp_seid);
 
 /**
  * @brief Set configuration
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE, AVDTP_STREAM_ENDPOINT_DOES_NOT_EXIST, AVDTP_STREAM_ENDPOINT_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_set_configuration(uint16_t avdtp_cid, uint8_t int_seid, uint8_t acp_seid, uint16_t configured_services_bitmap, avdtp_capabilities_t configuration);
 
@@ -175,14 +174,14 @@ uint8_t avdtp_source_set_configuration(uint16_t avdtp_cid, uint8_t int_seid, uin
  * @brief Reconfigure stream
  * @param avdtp_cid
  * @param seid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE, AVDTP_STREAM_ENDPOINT_DOES_NOT_EXIST, AVDTP_STREAM_ENDPOINT_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_reconfigure(uint16_t avdtp_cid, uint8_t int_seid, uint8_t acp_seid, uint16_t configured_services_bitmap, avdtp_capabilities_t configuration);
 
 /**
  * @brief Get configuration
  * @param avdtp_cid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_get_configuration(uint16_t avdtp_cid, uint8_t acp_seid);
 
@@ -191,35 +190,35 @@ uint8_t avdtp_source_get_configuration(uint16_t avdtp_cid, uint8_t acp_seid);
  * @brief Open stream
  * @param avdtp_cid
  * @param seid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_CONNECTION_IN_WRONG_STATE, AVDTP_SEID_DOES_NOT_EXIST, AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_open_stream(uint16_t avdtp_cid, uint8_t int_seid, uint8_t acp_seid);
 
 /**
  * @brief Start stream
  * @param local_seid
-* @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_SEID_DOES_NOT_EXIST, AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST
+* @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_start_stream(uint16_t avdtp_cid, uint8_t local_seid);
 
 /**
  * @brief Abort stream
  * @param local_seid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_SEID_DOES_NOT_EXIST, AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED
  */
 uint8_t avdtp_source_abort_stream(uint16_t avdtp_cid, uint8_t local_seid);
 
 /**
  * @brief Start stream
  * @param local_seid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_SEID_DOES_NOT_EXIST, AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST, 
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED 
  */
 uint8_t avdtp_source_stop_stream(uint16_t avdtp_cid, uint8_t local_seid);
 
 /**
  * @brief Suspend stream
  * @param local_seid
- * @return status ERROR_CODE_SUCCESS if succesful, otherwise AVDTP_CONNECTION_DOES_NOT_EXIST, AVDTP_SEID_DOES_NOT_EXIST, AVDTP_MEDIA_CONNECTION_DOES_NOT_EXIST 
+ * @return status ERROR_CODE_SUCCESS if succesful, otherwise ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER, ERROR_CODE_COMMAND_DISALLOWED 
  */
 uint8_t avdtp_source_suspend(uint16_t avdtp_cid, uint8_t local_seid);
 
@@ -232,8 +231,36 @@ uint8_t avdtp_source_suspend(uint16_t avdtp_cid, uint8_t local_seid);
 avdtp_stream_endpoint_t * avdtp_source_create_stream_endpoint(avdtp_sep_type_t sep_type, avdtp_media_type_t media_type);
 
 /**
- * @brief Send media payload.
- * @param avdtp_cid         AVDTP channel identifyer.
+ *  @brief Unregister stream endpoint and free it's memory
+ *  @param stream_endpoint created by avdtp_sink_create_stream_endpoint
+ */
+void avdtp_source_finalize_stream_endpoint(avdtp_stream_endpoint_t * stream_endpoint);
+
+/**
+ * @brief Send media packet
+ * @param avdtp_cid         AVDTP channel identifier.
+ * @param local_seid        ID of a local stream endpoint.
+ * @param packet
+ * @param size
+ * @return status
+ */
+uint8_t avdtp_source_stream_send_media_packet(uint16_t avdtp_cid, uint8_t local_seid, const uint8_t * packet, uint16_t size);
+
+/**
+ * @brief Send media payload including RTP header
+ * @param avdtp_cid         AVDTP channel identifier.
+ * @param local_seid        ID of a local stream endpoint.
+ * @param marker
+ * @param payload
+ * @param size
+ * @return status
+ */
+uint8_t avdtp_source_stream_send_media_payload_rtp(uint16_t avdtp_cid, uint8_t local_seid, uint8_t marker, const uint8_t * payload, uint16_t size);
+
+/**
+ * @brief Send media payload including RTP header and the SBC media header
+ * @deprecated Please use avdtp_source_stream_send_media_payload_rtp
+ * @param avdtp_cid         AVDTP channel identifier.
  * @param local_seid        ID of a local stream endpoint.
  * @param storage
  * @param num_bytes_to_copy
@@ -241,21 +268,35 @@ avdtp_stream_endpoint_t * avdtp_source_create_stream_endpoint(avdtp_sep_type_t s
  * @param marker
  * @return max_media_payload_size_without_media_header
  */
-int avdtp_source_stream_send_media_payload(uint16_t avdtp_cid, uint8_t local_seid, uint8_t * storage, int num_bytes_to_copy, uint8_t num_frames, uint8_t marker);
+int avdtp_source_stream_send_media_payload(uint16_t avdtp_cid, uint8_t local_seid, const uint8_t * payload, uint16_t payload_size, uint8_t num_frames, uint8_t marker);
 
 /**
  * @brief Request to send a media packet. Packet can be then sent on reception of AVDTP_SUBEVENT_STREAMING_CAN_SEND_MEDIA_PACKET_NOW event.
- * @param avdtp_cid         AVDTP channel identifyer.
+ * @param avdtp_cid         AVDTP channel identifier.
  * @param local_seid        ID of a local stream endpoint.
  */
 void avdtp_source_stream_endpoint_request_can_send_now(uint16_t avddp_cid, uint8_t local_seid);
 
 /**
  * @brief Return maximal media payload size, does not include media header.
- * @param avdtp_cid         AVDTP channel identifyer.
+ * @param avdtp_cid         AVDTP channel identifier.
  * @param local_seid        ID of a local stream endpoint.
  */
 int avdtp_max_media_payload_size(uint16_t avdtp_cid, uint8_t local_seid);
+
+/**
+ * @brief Register media configuration validator. Can reject insuitable configuration or report stream endpoint as currently busy
+ * @note validator has to return AVDTP error codes like: AVDTP_ERROR_CODE_SEP_IN_USE or AVDTP_ERROR_CODE_UNSUPPORTED_CONFIGURATION
+ *       the callback receives the media configuration in the same format as the existing AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_SBC_CONFIGURATION
+ *       and similar
+ * @param callback
+ */
+void avdtp_source_register_media_config_validator(uint8_t (*callback)(const avdtp_stream_endpoint_t * stream_endpoint, const uint8_t * event, uint16_t size));
+
+/**
+ * @brief De-Init AVDTP Source.
+ */
+void avdtp_source_deinit(void);
 
 /* API_END */
 

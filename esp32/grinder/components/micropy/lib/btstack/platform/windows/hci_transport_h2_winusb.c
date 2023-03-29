@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -63,6 +63,7 @@
 #include "btstack_debug.h"
 #include "hci.h"
 #include "hci_transport.h"
+#include "hci_transport_usb.h"
 
 #include <Windows.h>
 #include <SetupAPI.h>
@@ -87,20 +88,20 @@ typedef struct _BTSTACK_WINUSB_PIPE_INFORMATION_EX {
   ULONG          MaximumBytesPerInterval;
 } BTSTACK_WINUSB_PIPE_INFORMATION_EX, *BTSTACK_PWINUSB_PIPE_INFORMATION_EX;
 
-typedef WINBOOL (WINAPI * BTstack_WinUsb_QueryPipeEx_t) (
+typedef BOOL (WINAPI * BTstack_WinUsb_QueryPipeEx_t) (
 	WINUSB_INTERFACE_HANDLE 	InterfaceHandle,
 	UCHAR						AlternateInterfaceNumber,
 	UCHAR 						PipeIndex,
 	BTSTACK_PWINUSB_PIPE_INFORMATION_EX PipeInformationEx
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_RegisterIsochBuffer_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_RegisterIsochBuffer_t)(
 	WINUSB_INTERFACE_HANDLE     InterfaceHandle,
 	UCHAR                       PipeID,
 	PVOID                       Buffer,
 	ULONG                       BufferLength,
 	BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_ReadIsochPipe_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_ReadIsochPipe_t)(
     BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle,
     ULONG                       Offset,
     ULONG                       Length,
@@ -109,7 +110,7 @@ typedef WINBOOL (WINAPI * BTstack_WinUsb_ReadIsochPipe_t)(
     PUSBD_ISO_PACKET_DESCRIPTOR IsoPacketDescriptors,   // MSDN lists PULONG
     LPOVERLAPPED                Overlapped
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_ReadIsochPipeAsap_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_ReadIsochPipeAsap_t)(
     BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle,
     ULONG                       Offset,
     ULONG                       Length,
@@ -118,24 +119,24 @@ typedef WINBOOL (WINAPI * BTstack_WinUsb_ReadIsochPipeAsap_t)(
     PUSBD_ISO_PACKET_DESCRIPTOR IsoPacketDescriptors,
  	LPOVERLAPPED                Overlapped
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_WriteIsochPipe_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_WriteIsochPipe_t)(
     BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle,
     ULONG                       Offset,
     ULONG                       Length,
     PULONG                      FrameNumber,
 	LPOVERLAPPED                Overlapped
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_WriteIsochPipeAsap_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_WriteIsochPipeAsap_t)(
     BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle,
     ULONG                       Offset,
     ULONG                       Length,
     BOOL                        ContinueStream,
 	LPOVERLAPPED                Overlapped
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_UnregisterIsochBuffer_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_UnregisterIsochBuffer_t)(
 	BTSTACK_PWINUSB_ISOCH_BUFFER_HANDLE BufferHandle
 );
-typedef WINBOOL (WINAPI * BTstack_WinUsb_GetCurrentFrameNumber_t)(
+typedef BOOL (WINAPI * BTstack_WinUsb_GetCurrentFrameNumber_t)(
     WINUSB_INTERFACE_HANDLE     InterfaceHandle,        // MSDN lists 'Device handle returned from CreateFile'
     PULONG                      CurrentFrameNumber,
     LARGE_INTEGER               *TimeStamp
@@ -303,35 +304,68 @@ static uint16_t iso_packet_size;
 
 // list of known devices, using VendorID/ProductID tuples
 static const uint16_t known_bluetooth_devices[] = {
-    // DeLOCK Bluetooth 4.0
+    // BCM20702A0 - DeLOCK Bluetooth 4.0
     0x0a5c, 0x21e8,
-    // Asus BT400
+    // BCM20702A0 - Asus BT400
     0x0b05, 0x17cb,
-    // BCM20702B0 (Generic USB Detuned Class 1 @ 20 MHz)
+    // BCM20702B0 - Generic USB Detuned Class 1 @ 20 MHz
     0x0a5c, 0x22be,
+    // nRF5x Zephyr USB HCI, e.g nRF52840-PCA10056
+    0x2fe3, 0x0100,
+    0x2fe3, 0x000b,
 };
 
 static int num_known_devices = sizeof(known_bluetooth_devices) / sizeof(uint16_t) / 2;
 
-static int usb_is_known_bluetooth_device(const char * device_path){
-    int i;
-    for (i=0; i<num_known_devices; i++){
-        // construct pid/vid substring
-        char substring[20];
-        sprintf(substring, "vid_%04x&pid_%04x", known_bluetooth_devices[i*2], known_bluetooth_devices[i*2+1]);
-        const char * pos = strstr(device_path, substring);
-        log_info("check %s in %s -> %p", substring, device_path, pos);
-        if (pos){
-            return 1;
-        }
+// known devices
+typedef struct {
+    btstack_linked_item_t next;
+    uint16_t vendor_id;
+    uint16_t product_id;
+} usb_known_device_t;
+
+static btstack_linked_list_t usb_knwon_devices;
+
+void hci_transport_usb_add_device(uint16_t vendor_id, uint16_t product_id) {
+    usb_known_device_t * device = malloc(sizeof(usb_known_device_t));
+    if (device != NULL) {
+        device->vendor_id = vendor_id;
+        device->product_id = product_id;
+        btstack_linked_list_add(&usb_knwon_devices, (btstack_linked_item_t *) device);
     }
-    return 0;
 }
 
-static int usb_is_vmware_bluetooth_adapter(const char * device_path){
+static bool usb_is_vmware_bluetooth_adapter(const char * device_path){
     // VMware Vendor ID 0e0f
     const char * pos = strstr(device_path, "\\usb#vid_0e0f&pid");
-    return pos ? 1 : 0;
+    return (pos > 0);
+}
+
+static bool usb_device_path_match(const char * device_path, uint16_t vendor_id, uint16_t product_id){
+    // construct pid/vid substring
+    char substring[20];
+    sprintf_s(substring, sizeof(substring), "vid_%04x&pid_%04x", vendor_id, product_id);
+    const char * pos = strstr(device_path, substring);
+    log_info("check %s in %s -> %p", substring, device_path, pos);
+    return (pos > 0);
+}
+
+static bool usb_is_known_bluetooth_device(const char * device_path){
+    int i;
+    for (i=0; i<num_known_devices; i++){
+        if (usb_device_path_match( device_path, known_bluetooth_devices[i*2], known_bluetooth_devices[i*2+1])){
+            return true;
+        }
+    }
+    btstack_linked_list_iterator_t it;
+    btstack_linked_list_iterator_init(&it, &usb_knwon_devices);
+    while (btstack_linked_list_iterator_has_next(&it)) {
+        usb_known_device_t * device = (usb_known_device_t *) btstack_linked_list_iterator_next(&it);
+        if (usb_device_path_match( device_path, device->vendor_id, device->product_id)){
+            return true;
+        }
+    }
+    return false;
 }
 
 #ifdef ENABLE_SCO_OVER_HCI
@@ -513,7 +547,7 @@ static void usb_process_event_in(btstack_data_source_t *ds, btstack_data_source_
     }
 
     // notify uppper
-    packet_handler(HCI_EVENT_PACKET, hci_event_in_buffer, bytes_read);
+    packet_handler(HCI_EVENT_PACKET, hci_event_in_buffer, (uint16_t) bytes_read);
 
 	// re-submit transfer
 	usb_submit_event_in_transfer();
@@ -547,7 +581,7 @@ static void usb_process_acl_in(btstack_data_source_t *ds, btstack_data_source_ca
     }
 
     // notify uppper
-    packet_handler(HCI_ACL_DATA_PACKET, hci_acl_in_buffer, bytes_read);
+    packet_handler(HCI_ACL_DATA_PACKET, hci_acl_in_buffer, (uint16_t) bytes_read);
 
 	// re-submit transfer
 	usb_submit_acl_in_transfer();
@@ -591,6 +625,9 @@ static void sco_handle_data(uint8_t * buffer, uint16_t size){
                 packet_handler(HCI_SCO_DATA_PACKET, sco_buffer, sco_read_pos);
                 sco_state_machine_init();
                 break;
+			default:
+				btstack_unreachable();
+				break;
         }
     }
 }
@@ -690,7 +727,7 @@ static void usb_process_sco_in(btstack_data_source_t *ds,  btstack_data_source_c
             USBD_ISO_PACKET_DESCRIPTOR * packet_descriptor = &hci_sco_packet_descriptors[transfer_index * NUM_ISO_PACKETS + i];
             if (packet_descriptor->Length){
                 uint8_t * iso_data = &hci_sco_in_buffer[transfer_index * SCO_PACKET_SIZE + packet_descriptor->Offset];
-                uint16_t  iso_len  = packet_descriptor->Length; 
+                uint16_t  iso_len  = (uint16_t) packet_descriptor->Length;
                 sco_handle_data(iso_data, iso_len);
             }
         }
@@ -1214,7 +1251,7 @@ static int usb_open(void){
 
 static int usb_close(void){
     
-    if (!usb_transport_open == 0) return 0;
+    if (!usb_transport_open) return 0;
 
     // remove data sources
     btstack_run_loop_remove_data_source(&usb_data_source_command_out);

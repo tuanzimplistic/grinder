@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -34,6 +34,12 @@
  * contact@bluekitchen-gmbh.com
  *
  */
+
+/**
+ * @title u-blox SPP Service Server
+ * 
+ */
+
 #ifndef UBLOX_SPP_H
 #define UBLOX_SPP_H
 
@@ -48,19 +54,17 @@ extern "C" {
 /* API_START */
 
 /**
- * Implementation of the ublox SPP-like profile
+ * @text The u-blox SPP Service is implementation of the u-Blox SPP-like profile.
  *
- * To use with your application, add '#import <ublox_spp_service.gatt' to your .gatt file
+ * To use with your application, add `#import <ublox_spp_service.gatt` to your .gatt file
  * and call all functions below. All strings and blobs need to stay valid after calling the functions.
  */
 
 /**
  * @brief Init ublox SPP Service Server with ATT DB
- * @param client_data_callback 
- * @param client_flow_control_callback
+ * @param packet_handler for events and tx data from peer as RFCOMM_DATA_PACKET
  */
-void ublox_spp_service_server_init(void (*client_data_callback)(hci_con_handle_t con_handle, const uint8_t * data, uint16_t size), 
-                                   void (*client_flow_control_callback)(hci_con_handle_t con_handle, uint16_t credits));
+void ublox_spp_service_server_init(btstack_packet_handler_t packet_handler);
 
 /** 
  * @brief Queue send request. When called, one packet can be send via ublox_spp_service_send below

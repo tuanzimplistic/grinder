@@ -20,8 +20,8 @@
  * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MATTHIAS
- * RINGWALD OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
+ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -38,7 +38,10 @@
 #define BTSTACK_FILE__ "gatt_heart_rate_client.c"
 
 // *****************************************************************************
-/* EXAMPLE_START(gatt_heart_rate_client): Connects for Heart Rate Sensor and reports measurements */
+/* EXAMPLE_START(gatt_heart_rate_client): GATT Heart Rate Sensor Client 
+ *
+ * @text Connects for Heart Rate Sensor and reports measurements.
+ */
 // *****************************************************************************
 
 #include <inttypes.h>
@@ -98,7 +101,7 @@ static btstack_packet_callback_registration_t hci_event_callback_registration;
 static int advertisement_report_contains_uuid16(uint16_t uuid16, uint8_t * advertisement_report){
     // get advertisement from report event
     const uint8_t * adv_data = gap_event_advertising_report_get_data(advertisement_report);
-    uint16_t        adv_len  = gap_event_advertising_report_get_data_length(advertisement_report);
+    uint8_t         adv_len  = gap_event_advertising_report_get_data_length(advertisement_report);
 
     // iterate over advertisement data
     ad_context_t context;
@@ -133,6 +136,7 @@ static void handle_gatt_client_event(uint8_t packet_type, uint16_t channel, uint
 
     uint16_t heart_rate;
     uint8_t  sensor_contact;
+    uint8_t  att_status;
 
     switch(state){
         case TC_W4_SERVICE_RESULT:
@@ -142,8 +146,9 @@ static void handle_gatt_client_event(uint8_t packet_type, uint16_t channel, uint
                     gatt_event_service_query_result_get_service(packet, &heart_rate_service);
                     break;
                 case GATT_EVENT_QUERY_COMPLETE:
-                    if (packet[4] != 0){
-                        printf("SERVICE_QUERY_RESULT - Error status %x.\n", packet[4]);
+                    att_status = gatt_event_query_complete_get_att_status(packet);
+                    if (att_status != ATT_ERROR_SUCCESS){
+                        printf("SERVICE_QUERY_RESULT - Error status %x.\n", att_status);
                         gap_disconnect(connection_handle);
                         break;  
                     } 
@@ -162,8 +167,9 @@ static void handle_gatt_client_event(uint8_t packet_type, uint16_t channel, uint
                     gatt_event_characteristic_query_result_get_characteristic(packet, &heart_rate_measurement_characteristic);
                     break;
                 case GATT_EVENT_QUERY_COMPLETE:
-                    if (packet[4] != 0){
-                        printf("CHARACTERISTIC_QUERY_RESULT - Error status %x.\n", packet[4]);
+                    att_status = gatt_event_query_complete_get_att_status(packet);
+                    if (att_status != ATT_ERROR_SUCCESS){
+                        printf("CHARACTERISTIC_QUERY_RESULT - Error status %x.\n", att_status);
                         gap_disconnect(connection_handle);
                         break;  
                     } 
@@ -202,7 +208,7 @@ static void handle_gatt_client_event(uint8_t packet_type, uint16_t channel, uint
                     gatt_event_characteristic_query_result_get_characteristic(packet, &body_sensor_location_characteristic);
                     break;
                 case GATT_EVENT_QUERY_COMPLETE:
-                    if (packet[4] != 0){
+                    if (gatt_event_query_complete_get_att_status(packet) != ATT_ERROR_SUCCESS){
                         printf("CHARACTERISTIC_QUERY_RESULT - Error status %x.\n", packet[4]);
                         state = TC_CONNECTED;
                         break;  

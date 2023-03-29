@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # BlueKitchen GmbH (c) 2018
 
 import glob
@@ -133,7 +133,7 @@ defines_used = set()
 
 def size_for_type(type):
     param_sizes = { '1' : 1, '2' : 2, '3' : 3, '4' : 4, 'H' : 2, 'B' : 6, 'D' : 8, 'E' : 240, 'N' : 248, 'P' : 16,
-                    'A' : 31, 'S' : -1, 'V': -1, 'J' : 1, 'L' : 2, 'Q' : 32, 'U' : 16, 'X' : 20, 'Y' : 24, 'Z' : 18, 'T':-1}
+                    'A' : 31, 'S' : -1, 'V': -1, 'J' : 1, 'L' : 2, 'Q' : 32, 'K' : 16, 'U' : 16, 'X' : 20, 'Y' : 24, 'Z' : 18, 'T':-1}
     return param_sizes[type]
 
 def create_command_python(fout, name, ogf, ocf, format, params):
@@ -160,6 +160,7 @@ def create_command_python(fout, name, ogf, ocf, format, params):
      'E' : '# E / TODO Util.storeBytes(command, offset, %s, 240)',
      'P' : '# P / TODO Util.storeBytes(command, offset, %s, 16)',
      'Q' : '# Q / TODO Util.storeBytes(command, offset, %s, 32)',
+     'K' : '# Q / TODO Util.storeBytes(command, offset, %s, 32)',
      'A' : '# A / TODO Util.storeBytes(command, offset, %s, 31)',
      }
     # method arguments 
@@ -254,7 +255,7 @@ def create_event(fout, event_name, format, args):
      'X' : 'return btstack.btstack_types.GATTService(self.payload[{offset}:20])',
      'Y' : 'return btstack.btstack_types.GATTCharacteristic(self.payload[{offset}:24])',
      'Z' : 'return btstack.btstack_types.GATTCharacteristicDescriptor(self.payload[{offset}:18])',
-     'T' : 'return self.payload[{offset}:].decode("utf-8")',
+     'T' : 'return self.payload[{offset}:-1].decode("utf-8")',
      'N' : 'return self.payload[{offset}:{offset}+248].decode("utf-8")',
      # 'D' : 'Util.storeBytes(self.payload, %u, 8);',
      # 'Q' : 'Util.storeBytes(self.payload, %u, 32);',
@@ -279,7 +280,7 @@ def create_event(fout, event_name, format, args):
         elif f == 'V':
             access = event_getter_data.format(length_name=length_name, offset=offset)
             size = 0
-        elif f in ['D', 'Q']:
+        elif f in ['D', 'Q', 'K']:
             size = size_for_type(f)
             access = event_getter_data_fixed.format(size=size, offset=offset)
         else: 
@@ -358,7 +359,7 @@ gen_path = btstack_root + '/platform/daemon/binding/python/btstack/'
 defines = parser.parse_defines()
 
 # parse commands
-commands = parser.parse_commands(camel_case=False)
+commands = parser.parse_daemon_commands(camel_case=False)
 
 # parse bluetooth.h to get used events
 (events, le_events, event_types) = parser.parse_events()
