@@ -2,7 +2,7 @@ import gc
 import uos
 from flashbdev import bdev
 
-def wlan_connect(ssid='I3.41', password='0908073858'):
+def wlan_connect(ssid='Zimplistic', password='Zimplistic123'):
     import network
     wlan = network.WLAN(network.STA_IF)
     if not wlan.active() or not wlan.isconnected():

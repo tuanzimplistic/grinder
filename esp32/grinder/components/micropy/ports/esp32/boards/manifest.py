@@ -1,5 +1,6 @@
 freeze("$(PORT_DIR)/modules")
 include("$(MPY_DIR)/extmod/uasyncio")
+freeze("$(PORT_DIR)/../../my_packages")
 
 # Useful networking-related packages.
 require("bundle-networking")
